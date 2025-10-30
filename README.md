@@ -14,4 +14,4 @@ Telegram бот для учета теннисных тренировок, от�
 
 1. Клонируйте репозиторий:
 ```bash
-git clone https://github.com/ваш-username/tennis-manager-bot.git
+git clone https://github.com/Anastasia165/tennis-manager-bot.git
