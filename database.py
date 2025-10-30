@@ -2,6 +2,7 @@ import sqlite3
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
+from utils import log_database_operation
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +10,8 @@ logger = logging.getLogger(__name__)
 class Database:
     def __init__(self, db_path: str):
         self.db_path = db_path
+        self.logger = logging.getLogger('bot.database')
+        self.logger.info(f"Initializing database: {db_path}")
         self.init_db()
 
     def get_connection(self):
@@ -16,19 +19,21 @@ class Database:
 
     def init_db(self):
         """Инициализация базы данных"""
-        with self.get_connection() as conn:
+        self.logger.info("Initializing database tables...")
+        try:
+            with self.get_connection() as conn:
             # Таблица пользователей
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    telegram_id INTEGER UNIQUE NOT NULL,
-                    first_name TEXT NOT NULL,
-                    last_name TEXT,
-                    phone TEXT,
-                    registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    is_active BOOLEAN DEFAULT TRUE
-                )
-            ''')
+                conn.execute('''
+                        CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        telegram_id INTEGER UNIQUE NOT NULL,
+                        first_name TEXT NOT NULL,
+                        last_name TEXT,
+                        phone TEXT,
+                        registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        is_active BOOLEAN DEFAULT TRUE
+                    )
+                ''')
 
             # Таблица абонементов
             conn.execute('''
@@ -90,25 +95,28 @@ class Database:
 
             # Таблица транзакций
             conn.execute('''
-                CREATE TABLE IF NOT EXISTS transactions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    subscription_id INTEGER NOT NULL,
-                    training_session_id INTEGER,
-                    transaction_type TEXT NOT NULL,
-                    amount DECIMAL(10,2) NOT NULL,
-                    description TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                    FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
-                    FOREIGN KEY (training_session_id) REFERENCES training_sessions(id) ON DELETE SET NULL
-                )
-            ''')
+                        CREATE TABLE IF NOT EXISTS transactions (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id INTEGER NOT NULL,
+                            subscription_id INTEGER NOT NULL,
+                            training_session_id INTEGER,
+                            transaction_type TEXT NOT NULL,
+                            amount DECIMAL(10,2) NOT NULL,
+                            description TEXT,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+                            FOREIGN KEY (training_session_id) REFERENCES training_sessions(id) ON DELETE SET NULL
+                            )
+                        ''')
 
             # Заполняем прайс-лист начальными данными
             self._init_price_list(conn)
-
             conn.commit()
+            self.logger.info("Database initialized successfully")
+        except Exception as e:
+            self.logger.error(f"Database initialization failed: {e}")
+            raise
 
     def _init_price_list(self, conn):
         """Инициализация прайс-листа"""
@@ -135,6 +143,7 @@ class Database:
             ''', (duration, participants, price, description))
 
     # Методы для работы с пользователями
+    @log_database_operation
     def user_exists(self, telegram_id: int) -> bool:
         with self.get_connection() as conn:
             result = conn.execute(
@@ -143,7 +152,9 @@ class Database:
             ).fetchone()
             return result is not None
 
+    @log_database_operation
     def register_user(self, telegram_id: int, first_name: str, last_name: str = None, phone: str = None):
+        self.logger.info(f"Registering new user: {telegram_id}, {first_name} {last_name}")
         with self.get_connection() as conn:
             conn.execute('''
                 INSERT INTO users (telegram_id, first_name, last_name, phone)
@@ -198,8 +209,13 @@ class Database:
             ''', (duration, participants)).fetchone()
             return result[0] if result else None
 
+    @log_database_operation
     def add_training_session(self, user_id: int, subscription_id: int, duration: int,
                              participants: int, court_type: str = None, coach: str = None):
+        self.logger.info(
+            f"Adding training session: user={user_id}, duration={duration}, "
+            f"participants={participants}, court={court_type}, coach={coach}"
+        )
         with self.get_connection() as conn:
             # Получаем цену
             price = self.get_price(duration, participants)
@@ -245,6 +261,7 @@ class Database:
                   f"Тренировка: {duration}мин, {participants} чел."))
 
             conn.commit()
+            self.logger.info(f"Training session added successfully: ID {training_id}")
             return training_id
 
     # Методы для статистики

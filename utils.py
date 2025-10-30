@@ -1,34 +1,54 @@
-from datetime import datetime
-import re
+import logging
+from functools import wraps
+from typing import Any, Callable
 
-def validate_phone(phone: str) -> bool:
-    """Проверка формата телефона"""
-    pattern = r'^(\+7|7|8)?[\s\-]?\(?[489][0-9]{2}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$'
-    return bool(re.match(pattern, phone))
 
-def format_phone(phone: str) -> str:
-    """Форматирование телефона в единый формат"""
-    digits = re.sub(r'\D', '', phone)
-    if digits.startswith('8'):
-        digits = '7' + digits[1:]
-    elif len(digits) == 10:
-        digits = '7' + digits
-    return f"+{digits}"
+def log_command(func: Callable) -> Callable:
+    """Декоратор для логирования команд бота"""
 
-def format_date(date_str: str) -> str:
-    """Форматирование даты"""
-    date_obj = datetime.fromisoformat(date_str)
-    return date_obj.strftime('%d.%m.%Y')
+    @wraps(func)
+    async def wrapper(update: Any, context: Any, *args: Any, **kwargs: Any) -> Any:
+        logger = logging.getLogger(f'bot.commands')
 
-def format_amount(amount: float) -> str:
-    """Форматирование суммы"""
-    return f"{amount:,.2f} ₽".replace(',', ' ')
+        user = update.effective_user
+        command = func.__name__
 
-def get_period_name(period: str) -> str:
-    periods = {
-        'week': 'неделю',
-        'month': 'месяц',
-        'year': 'год',
-        'all': 'все время'
-    }
-    return periods.get(period, period)
+        logger.info(
+            f"Command '{command}' from user {user.id} ({user.username or 'no username'})"
+        )
+
+        try:
+            result = await func(update, context, *args, **kwargs)
+            logger.info(f"Command '{command}' completed successfully")
+            return result
+        except Exception as e:
+            logger.error(
+                f"Command '{command}' failed for user {user.id}: {str(e)}",
+                exc_info=True
+            )
+            raise
+
+    return wrapper
+
+
+def log_database_operation(func: Callable) -> Callable:
+    """Декоратор для логирования операций с БД"""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        logger = logging.getLogger('bot.database')
+
+        logger.debug(f"DB operation: {func.__name__} - args: {args[1:]} kwargs: {kwargs}")
+
+        try:
+            result = func(*args, **kwargs)
+            logger.debug(f"DB operation {func.__name__} completed")
+            return result
+        except Exception as e:
+            logger.error(
+                f"DB operation {func.__name__} failed: {str(e)}",
+                exc_info=True
+            )
+            raise
+
+    return wrapper

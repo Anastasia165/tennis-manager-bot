@@ -4,25 +4,34 @@ from database import Database
 from handlers import Handlers
 from config import config
 import os
-
-# Настройка логирования
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+from logging_config import setup_logging
 
 
 def main():
+    # Инициализация логирования
+    setup_logging()
+    logger = logging.getLogger('bot.main')
+
+    logger.info("Starting Tennis Manager Bot...")
+
     # Создаем папку для базы данных если её нет
     os.makedirs(os.path.dirname(config.DB_PATH) if os.path.dirname(config.DB_PATH) else '.', exist_ok=True)
 
     # Инициализация базы данных
-    db = Database(config.DB_PATH)
-    handlers = Handlers(db)
+    try:
+        db = Database(config.DB_PATH)
+        handlers = Handlers(db)
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        return
 
-    # Создание приложения
-    application = Application.builder().token(config.BOT_TOKEN).build()
+    try:
+        application = Application.builder().token(config.BOT_TOKEN).build()
+        logger.info("Bot application created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create bot application: {e}")
+        return
 
     # Обработчик начала работы и регистрации
     conv_handler = ConversationHandler(
@@ -74,8 +83,13 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.unknown_command))
 
     # Запуск бота
-    print("Бот запущен...")
-    application.run_polling()
+    try:
+        logger.info("Bot starting polling...")
+        application.run_polling()
+    except Exception as e:
+        logger.error(f"Bot stopped with error: {e}")
+    finally:
+        logger.info("Bot stopped")
 
 
 if __name__ == '__main__':

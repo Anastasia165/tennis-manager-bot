@@ -13,9 +13,12 @@ logger = logging.getLogger(__name__)
 class Handlers:
     def __init__(self, db: Database):
         self.db = db
+        self.logger = logging.getLogger('bot.handlers')
 
+    @log_command
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
+        self.logger.info(f"Start command from user {user.id} ({user.username})")
         telegram_id = user.id
 
         if self.db.user_exists(telegram_id):
@@ -32,7 +35,11 @@ class Handlers:
             )
             return config.STATES['REGISTER_FIRST_NAME']
 
+    @log_command
     async def register_first_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        first_name = update.message.text
+        user = update.effective_user
+        self.logger.info(f"User {user.id} entered first name: {first_name}")
         context.user_data['first_name'] = update.message.text
         await update.message.reply_text("Отлично! Теперь введите вашу фамилию:")
         return config.STATES['REGISTER_LAST_NAME']

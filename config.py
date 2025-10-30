@@ -10,11 +10,12 @@ class Config:
     BOT_TOKEN: str = os.getenv('BOT_TOKEN')
     ADMIN_IDS: list = field(
         default_factory=lambda: list(map(int, os.getenv('ADMIN_IDS', '').split(','))) if os.getenv('ADMIN_IDS') else [])
+    DB_PATH: str = os.getenv('DB_PATH', 'data/tennis_club.db')
 
-    # Настройки БД
-    DB_PATH: str = os.getenv('DB_PATH', 'tennis_club.db')
+    # Настройки логирования
+    LOG_LEVEL: str = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_DIR: str = os.getenv('LOG_DIR', 'logs')
 
-    # Состояния бота
     STATES: dict = field(default_factory=lambda: {
         'REGISTER_FIRST_NAME': 1,
         'REGISTER_LAST_NAME': 2,
