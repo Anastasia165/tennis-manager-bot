@@ -1,0 +1,36 @@
+gitignore
+# Файлы окружения
+.env
+.env.local
+.env.production
+
+# Базы данных
+*.db
+*.sqlite
+data/
+*.sqlite3
+
+# Питон
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Логи
+*.log
+logs/
+
+# Временные файлы
+*.tmp
+*.temp
