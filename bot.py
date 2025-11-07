@@ -1,18 +1,26 @@
 import logging
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
+import asyncio
+import os
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command
+from aiogram.fsm.storage.memory import MemoryStorage
 from database import Database
 from handlers import Handlers
-from config import config
-import os
+from config import config, RegisterStates, SubscriptionStates, TrainingStates, StatsStates
 from logging_config import setup_logging
 
 
-def main():
+async def main():
     # Инициализация логирования
     setup_logging()
     logger = logging.getLogger('bot.main')
 
     logger.info("Starting Tennis Manager Bot...")
+
+    # Проверка наличия токена
+    if not config.BOT_TOKEN:
+        logger.error("BOT_TOKEN not found in environment variables")
+        return
 
     # Создаем папку для базы данных если её нет
     os.makedirs(os.path.dirname(config.DB_PATH) if os.path.dirname(config.DB_PATH) else '.', exist_ok=True)
@@ -20,77 +28,117 @@ def main():
     # Инициализация базы данных
     try:
         db = Database(config.DB_PATH)
-        handlers = Handlers(db)
+        handlers_instance = Handlers(db)
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
         return
 
+    # Инициализация бота и диспетчера
     try:
-        application = Application.builder().token(config.BOT_TOKEN).build()
+        bot = Bot(token=config.BOT_TOKEN)
+        storage = MemoryStorage()
+        dp = Dispatcher(storage=storage)
         logger.info("Bot application created successfully")
     except Exception as e:
         logger.error(f"Failed to create bot application: {e}")
         return
 
-    # Обработчик начала работы и регистрации
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', handlers.start)],
-        states={
-            config.STATES['REGISTER_FIRST_NAME']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_first_name)
-            ],
-            config.STATES['REGISTER_LAST_NAME']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_last_name)
-            ],
-            config.STATES['REGISTER_PHONE']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_phone)
-            ],
-            config.STATES['NEW_SUBSCRIPTION_NUMBER']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.new_subscription_number)
-            ],
-            config.STATES['NEW_SUBSCRIPTION_AMOUNT']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.new_subscription_amount)
-            ],
-            config.STATES['TRAINING_DURATION']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_duration)
-            ],
-            config.STATES['TRAINING_PARTICIPANTS']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_participants)
-            ],
-            config.STATES['TRAINING_COURT']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_court)
-            ],
-            config.STATES['TRAINING_COACH']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_coach)
-            ],
-            config.STATES['STATS_PERIOD']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.show_stats)
-            ],
-        },
-        fallbacks=[CommandHandler('cancel', handlers.cancel)]
-    )
+    # === Обработчики команд ===
 
-    # Добавляем обработчики
-    application.add_handler(conv_handler)
-    application.add_handler(MessageHandler(filters.Regex('^🎾 Добавить тренировку$'), handlers.add_training_start))
-    application.add_handler(MessageHandler(filters.Regex('^💰 Баланс абонемента$'), handlers.show_balance))
-    application.add_handler(MessageHandler(filters.Regex('^📊 Статистика$'), handlers.show_stats_start))
-    application.add_handler(MessageHandler(filters.Regex('^📝 Новый абонемент$'), handlers.new_subscription_start))
-    application.add_handler(MessageHandler(filters.Regex('^📋 История тренировок$'), handlers.show_training_history))
-    application.add_handler(MessageHandler(filters.Regex('^👤 Профиль$'), handlers.show_profile))
-    application.add_handler(MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.unknown_command))
+    # Команда /start
+    @dp.message(Command("start"))
+    async def start_command(message: types.Message, state):
+        await handlers_instance.start(message, state)
+
+    # === Регистрация ===
+    @dp.message(RegisterStates.first_name)
+    async def register_first_name_handler(message: types.Message, state):
+        await handlers_instance.register_first_name(message, state)
+
+    @dp.message(RegisterStates.last_name)
+    async def register_last_name_handler(message: types.Message, state):
+        await handlers_instance.register_last_name(message, state)
+
+    @dp.message(RegisterStates.phone)
+    async def register_phone_handler(message: types.Message, state):
+        await handlers_instance.register_phone(message, state)
+
+    # === Абонемент ===
+    @dp.message(SubscriptionStates.number)
+    async def subscription_number_handler(message: types.Message, state):
+        await handlers_instance.new_subscription_number(message, state)
+
+    @dp.message(SubscriptionStates.amount)
+    async def subscription_amount_handler(message: types.Message, state):
+        await handlers_instance.new_subscription_amount(message, state)
+
+    # === Тренировка ===
+    @dp.message(TrainingStates.duration)
+    async def training_duration_handler(message: types.Message, state):
+        await handlers_instance.training_duration(message, state)
+
+    @dp.message(TrainingStates.participants)
+    async def training_participants_handler(message: types.Message, state):
+        await handlers_instance.training_participants(message, state)
+
+    @dp.message(TrainingStates.court)
+    async def training_court_handler(message: types.Message, state):
+        await handlers_instance.training_court(message, state)
+
+    @dp.message(TrainingStates.coach)
+    async def training_coach_handler(message: types.Message, state):
+        await handlers_instance.training_coach(message, state)
+
+    # === Статистика ===
+    @dp.message(StatsStates.period)
+    async def stats_period_handler(message: types.Message, state):
+        await handlers_instance.show_stats(message, state)
+
+    # === Обработчики меню ===
+    @dp.message(F.text == '🎾 Добавить тренировку')
+    async def add_training_handler(message: types.Message, state):
+        await handlers_instance.add_training_start(message, state)
+
+    @dp.message(F.text == '💰 Баланс абонемента')
+    async def show_balance_handler(message: types.Message):
+        await handlers_instance.show_balance(message)
+
+    @dp.message(F.text == '📊 Статистика')
+    async def show_stats_start_handler(message: types.Message, state):
+        await handlers_instance.show_stats_start(message, state)
+
+    @dp.message(F.text == '📝 Новый абонемент')
+    async def new_subscription_handler(message: types.Message, state):
+        await handlers_instance.new_subscription_start(message, state)
+
+    @dp.message(F.text == '📋 История тренировок')
+    async def show_history_handler(message: types.Message):
+        await handlers_instance.show_training_history(message)
+
+    @dp.message(F.text == '👤 Профиль')
+    async def show_profile_handler(message: types.Message):
+        await handlers_instance.show_profile(message)
+
+    @dp.message(F.text == '❌ Отмена')
+    async def cancel_handler(message: types.Message, state):
+        await handlers_instance.cancel(message, state)
+
+    # === Обработчик неизвестных команд ===
+    @dp.message()
+    async def unknown_handler(message: types.Message):
+        await handlers_instance.unknown_command(message)
 
     # Запуск бота
     try:
         logger.info("Bot starting polling...")
-        application.run_polling()
+        await dp.start_polling(bot)
     except Exception as e:
         logger.error(f"Bot stopped with error: {e}")
     finally:
+        await bot.session.close()
         logger.info("Bot stopped")
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

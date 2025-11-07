@@ -34,3 +34,6 @@ logs/
 # Временные файлы
 *.tmp
 *.temp
+
+# Claude
+CLAUDE.md

@@ -236,7 +236,7 @@ class Database:
             cursor = conn.execute('''
                 INSERT INTO training_sessions (session_date, session_time, duration_minutes, court_type, coach_name)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (now.date(), now.time(), duration, court_type, coach))
+            ''', (str(now.date()), str(now.time()), duration, court_type, coach))
             training_id = cursor.lastrowid
 
             # Добавляем участника
