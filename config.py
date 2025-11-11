@@ -26,7 +26,10 @@ class Config:
         'TRAINING_PARTICIPANTS': 7,
         'TRAINING_COURT': 8,
         'TRAINING_COACH': 9,
-        'STATS_PERIOD': 10
+        'STATS_PERIOD': 10,
+        'CLOSE_SUBSCRIPTION_CONFIRM': 11,
+        'TOP_UP_AMOUNT': 12,
+        'EXPENSES_PERIOD': 13,
     })
 
 

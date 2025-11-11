@@ -1,10 +1,32 @@
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 def get_main_menu():
     keyboard = [
-        ['🎾 Добавить тренировку', '💰 Баланс абонемента'],
-        ['📊 Статистика', '📝 Новый абонемент'],
-        ['📋 История тренировок', '👤 Профиль']
+        ['💪 Тренировки', '💳 Абонементы'],
+        ['👤 Профиль']
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_workouts_menu():
+    keyboard = [
+        ['➕ Добавить тренировку', '📈 Статистика'],
+        ['📋 История тренировок', '🔙 Назад']
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_subscriptions_menu():
+    keyboard = [
+        ['💰 Баланс', '🔄 Новый абонемент'],
+        ['🗂️ Архив', '💸 Пополнить'],
+        ['📊 Расходы', '🚫 Закрыть абонемент'],
+        ['🔙 Назад']
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def get_profile_menu():
+    keyboard = [
+        ['ℹ️ Показать профиль', '✏️ Редактировать профиль'],
+        ['🔙 Назад']
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 

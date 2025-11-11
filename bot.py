@@ -67,18 +67,36 @@ def main():
             config.STATES['STATS_PERIOD']: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.show_stats)
             ],
+            config.STATES['CLOSE_SUBSCRIPTION_CONFIRM']: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.close_subscription_confirm)
+            ],
+            config.STATES['TOP_UP_AMOUNT']: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.top_up_subscription_amount)
+            ],
+            config.STATES['EXPENSES_PERIOD']: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.show_expenses)
+            ],
         },
         fallbacks=[CommandHandler('cancel', handlers.cancel)]
     )
 
     # Добавляем обработчики
     application.add_handler(conv_handler)
-    application.add_handler(MessageHandler(filters.Regex('^🎾 Добавить тренировку$'), handlers.add_training_start))
-    application.add_handler(MessageHandler(filters.Regex('^💰 Баланс абонемента$'), handlers.show_balance))
-    application.add_handler(MessageHandler(filters.Regex('^📊 Статистика$'), handlers.show_stats_start))
-    application.add_handler(MessageHandler(filters.Regex('^📝 Новый абонемент$'), handlers.new_subscription_start))
+    application.add_handler(MessageHandler(filters.Regex('^💪 Тренировки$'), handlers.show_workouts_menu))
+    application.add_handler(MessageHandler(filters.Regex('^💳 Абонементы$'), handlers.show_subscriptions_menu))
+    application.add_handler(MessageHandler(filters.Regex('^👤 Профиль$'), handlers.show_profile_menu))
+    application.add_handler(MessageHandler(filters.Regex('^🔙 Назад$'), handlers.back_to_main_menu))
+    application.add_handler(MessageHandler(filters.Regex('^➕ Добавить тренировку$'), handlers.add_training_start))
+    application.add_handler(MessageHandler(filters.Regex('^💰 Баланс$'), handlers.show_balance))
+    application.add_handler(MessageHandler(filters.Regex('^📈 Статистика$'), handlers.show_stats_start))
+    application.add_handler(MessageHandler(filters.Regex('^🔄 Новый абонемент$'), handlers.new_subscription_start))
     application.add_handler(MessageHandler(filters.Regex('^📋 История тренировок$'), handlers.show_training_history))
-    application.add_handler(MessageHandler(filters.Regex('^👤 Профиль$'), handlers.show_profile))
+    application.add_handler(MessageHandler(filters.Regex('^🗂️ Архив$'), handlers.show_archived_subscriptions))
+    application.add_handler(MessageHandler(filters.Regex('^💸 Пополнить$'), handlers.top_up_subscription_start))
+    application.add_handler(MessageHandler(filters.Regex('^📊 Расходы$'), handlers.show_expenses_start))
+    application.add_handler(MessageHandler(filters.Regex('^🚫 Закрыть абонемент$'), handlers.close_subscription_start))
+    application.add_handler(MessageHandler(filters.Regex('^ℹ️ Показать профиль$'), handlers.show_profile))
+    application.add_handler(MessageHandler(filters.Regex('^✏️ Редактировать профиль$'), handlers.edit_profile_start))
     application.add_handler(MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.unknown_command))
 

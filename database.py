@@ -175,8 +175,8 @@ class Database:
     def create_subscription(self, user_id: int, subscription_number: str, initial_amount: float):
         with self.get_connection() as conn:
             cursor = conn.execute('''
-                INSERT INTO subscriptions (user_id, subscription_number, initial_amount, current_balance, start_date)
-                VALUES (?, ?, ?, ?, date('now'))
+                INSERT INTO subscriptions (user_id, subscription_number, initial_amount, current_balance, start_date, status)
+                VALUES (?, ?, ?, ?, date('now'), 'active')
             ''', (user_id, subscription_number, initial_amount, initial_amount))
             return cursor.lastrowid
 
@@ -184,12 +184,45 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.execute('''
                 SELECT * FROM subscriptions 
-                WHERE user_id = ? AND status = 'active' AND current_balance > 0
+                WHERE user_id = ? AND status = 'active'
                 ORDER BY created_at DESC LIMIT 1
             ''', (user_id,))
             columns = [description[0] for description in cursor.description]
             row = cursor.fetchone()
             return dict(zip(columns, row)) if row else None
+
+    def close_subscription(self, subscription_id: int):
+        with self.get_connection() as conn:
+            conn.execute('''
+                UPDATE subscriptions 
+                SET status = 'closed', end_date = date('now')
+                WHERE id = ?
+            ''', (subscription_id,))
+
+    def top_up_subscription(self, subscription_id: int, amount: float):
+        with self.get_connection() as conn:
+            conn.execute('''
+                UPDATE subscriptions 
+                SET current_balance = current_balance + ?
+                WHERE id = ?
+            ''', (amount, subscription_id))
+            
+            user_id = conn.execute('SELECT user_id FROM subscriptions WHERE id = ?', (subscription_id,)).fetchone()[0]
+            
+            conn.execute('''
+                INSERT INTO transactions (user_id, subscription_id, transaction_type, amount, description)
+                VALUES (?, ?, 'top-up', ?, 'Пополнение абонемента')
+            ''', (user_id, subscription_id, amount))
+
+    def get_archived_subscriptions(self, user_id: int) -> List[Dict]:
+        with self.get_connection() as conn:
+            cursor = conn.execute('''
+                SELECT * FROM subscriptions 
+                WHERE user_id = ? AND status = 'closed'
+                ORDER BY end_date DESC
+            ''', (user_id,))
+            columns = [description[0] for description in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     def update_subscription_balance(self, subscription_id: int, amount: float):
         with self.get_connection() as conn:
@@ -256,7 +289,7 @@ class Database:
             conn.execute('''
                 INSERT INTO transactions 
                 (user_id, subscription_id, training_session_id, transaction_type, amount, description)
-                VALUES (?, ?, ?, 'training', ?, ?)
+                VALUES (?, ?, ?, 'expense', ?, ?)
             ''', (user_id, subscription_id, training_id, price,
                   f"Тренировка: {duration}мин, {participants} чел."))
 
@@ -270,7 +303,7 @@ class Database:
             date_filter = self._get_date_filter(period)
             result = conn.execute('''
                 SELECT COALESCE(SUM(amount), 0) FROM transactions 
-                WHERE user_id = ? AND transaction_type = 'training' 
+                WHERE user_id = ? AND transaction_type = 'expense' 
                 AND created_at >= ?
             ''', (user_id, date_filter)).fetchone()
             return result[0] if result else 0
@@ -316,5 +349,17 @@ class Database:
                 LIMIT ?
             ''', (user_id, limit))
 
+            columns = [description[0] for description in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def get_transactions(self, user_id: int, period: str) -> List[Dict]:
+        with self.get_connection() as conn:
+            date_filter = self._get_date_filter(period)
+            cursor = conn.execute('''
+                SELECT transaction_type as type, amount, created_at as date 
+                FROM transactions 
+                WHERE user_id = ? AND created_at >= ?
+                ORDER BY created_at DESC
+            ''', (user_id, date_filter))
             columns = [description[0] for description in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
