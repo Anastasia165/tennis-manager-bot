@@ -33,71 +33,101 @@ def main():
         logger.error(f"Failed to create bot application: {e}")
         return
 
-    # Обработчик начала работы и регистрации
-    conv_handler = ConversationHandler(
+    # --- Conversation Handlers ---
+    # Каждый диалог должен быть в своем ConversationHandler
+
+    # 1. Диалог регистрации
+    registration_conv = ConversationHandler(
         entry_points=[CommandHandler('start', handlers.start)],
         states={
-            config.STATES['REGISTER_FIRST_NAME']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_first_name)
-            ],
-            config.STATES['REGISTER_LAST_NAME']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_last_name)
-            ],
-            config.STATES['REGISTER_PHONE']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_phone)
-            ],
-            config.STATES['NEW_SUBSCRIPTION_NUMBER']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.new_subscription_number)
-            ],
-            config.STATES['NEW_SUBSCRIPTION_AMOUNT']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.new_subscription_amount)
-            ],
-            config.STATES['TRAINING_DURATION']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_duration)
-            ],
-            config.STATES['TRAINING_PARTICIPANTS']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_participants)
-            ],
-            config.STATES['TRAINING_COURT']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_court)
-            ],
-            config.STATES['TRAINING_COACH']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_coach)
-            ],
-            config.STATES['STATS_PERIOD']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.show_stats)
-            ],
-            config.STATES['CLOSE_SUBSCRIPTION_CONFIRM']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.close_subscription_confirm)
-            ],
-            config.STATES['TOP_UP_AMOUNT']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.top_up_subscription_amount)
-            ],
-            config.STATES['EXPENSES_PERIOD']: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.show_expenses)
-            ],
+            config.STATES['REGISTER_FIRST_NAME']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_first_name)],
+            config.STATES['REGISTER_LAST_NAME']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_last_name)],
+            config.STATES['REGISTER_PHONE']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.register_phone)],
         },
-        fallbacks=[CommandHandler('cancel', handlers.cancel)]
+        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel)]
     )
 
-    # Добавляем обработчики
-    application.add_handler(conv_handler)
+    # 2. Диалог создания нового абонемента
+    new_subscription_conv = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex('^🔄 Новый абонемент$'), handlers.new_subscription_start)],
+        states={
+            config.STATES['NEW_SUBSCRIPTION_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.new_subscription_number)],
+            config.STATES['NEW_SUBSCRIPTION_AMOUNT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.new_subscription_amount)],
+        },
+        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel)]
+    )
+
+    # 3. Диалог добавления тренировки
+    add_training_conv = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex('^➕ Добавить тренировку$'), handlers.add_training_start)],
+        states={
+            config.STATES['TRAINING_DURATION']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_duration)],
+            config.STATES['TRAINING_PARTICIPANTS']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_participants)],
+            config.STATES['TRAINING_COURT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_court)],
+            config.STATES['TRAINING_COACH']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.training_coach)],
+        },
+        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel)]
+    )
+
+    # 4. Диалог просмотра статистики
+    stats_conv = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex('^📈 Статистика$'), handlers.show_stats_start)],
+        states={
+            config.STATES['STATS_PERIOD']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.show_stats)],
+        },
+        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel)]
+    )
+
+    # 5. Диалог закрытия абонемента
+    close_subscription_conv = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex('^🚫 Закрыть абонемент$'), handlers.close_subscription_start)],
+        states={
+            config.STATES['CLOSE_SUBSCRIPTION_CONFIRM']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.close_subscription_confirm)],
+        },
+        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel)]
+    )
+
+    # 6. Диалог пополнения абонемента
+    top_up_conv = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex('^💸 Пополнить$'), handlers.top_up_subscription_start)],
+        states={
+            config.STATES['TOP_UP_AMOUNT']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.top_up_subscription_amount)],
+        },
+        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel)]
+    )
+
+    # 7. Диалог просмотра расходов
+    expenses_conv = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex('^📊 Расходы$'), handlers.show_expenses_start)],
+        states={
+            config.STATES['EXPENSES_PERIOD']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.show_expenses)],
+        },
+        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel)]
+    )
+
+    # Добавляем все диалоги в приложение
+    application.add_handler(registration_conv)
+    application.add_handler(new_subscription_conv)
+    application.add_handler(add_training_conv)
+    application.add_handler(stats_conv)
+    application.add_handler(close_subscription_conv)
+    application.add_handler(top_up_conv)
+    application.add_handler(expenses_conv)
+
+    # Обработчики для навигации по меню (не являются частью диалогов)
     application.add_handler(MessageHandler(filters.Regex('^💪 Тренировки$'), handlers.show_workouts_menu))
     application.add_handler(MessageHandler(filters.Regex('^💳 Абонементы$'), handlers.show_subscriptions_menu))
     application.add_handler(MessageHandler(filters.Regex('^👤 Профиль$'), handlers.show_profile_menu))
     application.add_handler(MessageHandler(filters.Regex('^🔙 Назад$'), handlers.back_to_main_menu))
-    application.add_handler(MessageHandler(filters.Regex('^➕ Добавить тренировку$'), handlers.add_training_start))
+
+    # Обработчики для одиночных действий (не являются частью диалогов)
     application.add_handler(MessageHandler(filters.Regex('^💰 Баланс$'), handlers.show_balance))
-    application.add_handler(MessageHandler(filters.Regex('^📈 Статистика$'), handlers.show_stats_start))
-    application.add_handler(MessageHandler(filters.Regex('^🔄 Новый абонемент$'), handlers.new_subscription_start))
     application.add_handler(MessageHandler(filters.Regex('^📋 История тренировок$'), handlers.show_training_history))
     application.add_handler(MessageHandler(filters.Regex('^🗂️ Архив$'), handlers.show_archived_subscriptions))
-    application.add_handler(MessageHandler(filters.Regex('^💸 Пополнить$'), handlers.top_up_subscription_start))
-    application.add_handler(MessageHandler(filters.Regex('^📊 Расходы$'), handlers.show_expenses_start))
-    application.add_handler(MessageHandler(filters.Regex('^🚫 Закрыть абонемент$'), handlers.close_subscription_start))
     application.add_handler(MessageHandler(filters.Regex('^ℹ️ Показать профиль$'), handlers.show_profile))
     application.add_handler(MessageHandler(filters.Regex('^✏️ Редактировать профиль$'), handlers.edit_profile_start))
-    application.add_handler(MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel))
+
+    # Обработчик для неизвестных команд (должен быть последним)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.unknown_command))
 
     # Запуск бота
