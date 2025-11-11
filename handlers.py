@@ -495,6 +495,13 @@ class Handlers:
 
     async def show_profile(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = self.db.get_user(update.effective_user.id)
+
+        if user is None:
+            await update.message.reply_text(
+                "Ваш профиль не найден. Пожалуйста, зарегистрируйтесь, используя команду /start."
+            )
+            return
+
         subscription = self.db.get_active_subscription(user['id'])
         total_trainings = self.db.get_training_count(user['id'], 'all')
 

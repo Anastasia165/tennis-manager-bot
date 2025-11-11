@@ -57,8 +57,18 @@ def log_command(func: Callable) -> Callable:
     """Декоратор для логирования команд бота"""
 
     @wraps(func)
-    async def wrapper(update: Any, context: Any, *args: Any, **kwargs: Any) -> Any:
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        from telegram import Update
         logger = logging.getLogger(f'bot.commands')
+
+        # The 'update' object is the first argument that is an instance of the Update class
+        update = next((arg for arg in args if isinstance(arg, Update)), None)
+
+        if not update:
+            # If we can't find the update object, we can't get the user.
+            # We'll log a warning and call the function without user info.
+            logger.warning(f"Could not find Update object for command '{func.__name__}'")
+            return await func(*args, **kwargs)
 
         user = update.effective_user
         command = func.__name__
@@ -68,7 +78,7 @@ def log_command(func: Callable) -> Callable:
         )
 
         try:
-            result = await func(update, context, *args, **kwargs)
+            result = await func(*args, **kwargs)
             logger.info(f"Command '{command}' completed successfully")
             return result
         except Exception as e:
