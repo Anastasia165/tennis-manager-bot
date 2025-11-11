@@ -378,8 +378,8 @@ class Handlers:
         context.user_data['court_type'] = court_type
 
         await update.message.reply_text(
-            "Введите имя тренера (или 'Пропустить'):",
-            reply_markup=ReplyKeyboardRemove()
+            "Введите имя тренера или нажмите 'Пропустить':",
+            reply_markup=get_coach_keyboard()
         )
         return config.STATES['TRAINING_COACH']
 

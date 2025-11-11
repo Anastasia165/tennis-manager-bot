@@ -53,6 +53,15 @@ def get_court_type_keyboard():
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
+
+def get_coach_keyboard():
+    keyboard = [
+        ['Пропустить'],
+        ['❌ Отмена']
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+
 def get_stats_period_keyboard():
     keyboard = [
         ['📅 За неделю', '📅 За месяц'],
