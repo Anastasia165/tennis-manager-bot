@@ -1,0 +1,93 @@
+
+# Структура проекта Tennis Bot
+
+Этот файл описывает структуру проекта и назначение каждого файла.
+
+- `bot.py`: Главный файл для запуска бота. Он инициализирует приложение, базу данных, обработчики и запускает бота.
+
+- `config.py`: Файл конфигурации. Хранит токен бота, ID администраторов, путь к базе данных и другие настройки. Также содержит словарь `STATES` для управления состояниями в диалогах.
+
+- `database.py`: Отвечает за все взаимодействия с базой данных SQLite. Содержит класс `Database` с методами для создания таблиц, добавления, получения и обновления данных.
+
+- `handlers.py`: Содержит класс `Handlers`, в котором реализована вся логика обработки команд и сообщений от пользователя. Здесь находятся обработчики для регистрации, управления абонементами, тренировками и профилем.
+
+- `keyboards.py`: Определяет все клавиатуры, которые бот отправляет пользователю. Функции в этом файле генерируют разметку для главного меню, меню абонементов, профиля и т.д.
+
+- `utils.py`: Содержит вспомогательные функции, которые используются в разных частях проекта. Например, функции для валидации номера телефона, форматирования дат и сумм, а также декораторы для логирования.
+
+- `logging_config.py`: Настраивает конфигурацию логирования для проекта.
+
+- `requirements.txt`: Список зависимостей Python, необходимых для работы проекта.
+
+- `data/`: Директория для хранения файла базы данных (`tennis_club.db`).
+
+- `logs/`: Директория для хранения лог-файлов.
+
+---
+
+## Описание функций из `handlers.py`
+
+- `__init__(self, db: Database)`: Конструктор класса. Инициализирует объект базы данных и логгер.
+- `start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Обработчик команды `/start`. Проверяет, зарегистрирован ли пользователь. Если да, приветствует и показывает главное меню. Если нет, запускает процесс регистрации.
+- `register_first_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Шаг регистрации. Получает имя пользователя, сохраняет его и запрашивает фамилию.
+- `register_last_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Шаг регистрации. Получает фамилию, сохраняет ее и запрашивает номер телефона.
+- `register_phone(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Шаг регистрации. Получает и валидирует номер телефона. Если все верно, регистрирует пользователя в базе данных и показывает главное меню.
+- `main_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает главное меню.
+- `show_workouts_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает меню тренировок.
+- `show_subscriptions_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает меню абонементов.
+- `show_profile_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает меню профиля.
+- `back_to_main_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Возвращает пользователя в главное меню.
+- `show_balance(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает баланс текущего активного абонемента.
+- `new_subscription_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Начинает диалог создания нового абонемента.
+- `new_subscription_number(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает номер нового абонемента и запрашивает сумму.
+- `new_subscription_amount(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает сумму, создает новый абонемент в базе данных и завершает диалог.
+- `close_subscription_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Начинает диалог закрытия абонемента.
+- `close_subscription_confirm(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает подтверждение от пользователя и закрывает абонемент.
+- `top_up_subscription_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Начинает диалог пополнения баланса абонемента.
+- `top_up_subscription_amount(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает сумму пополнения и обновляет баланс.
+- `show_archived_subscriptions(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает список архивных (закрытых) абонементов.
+- `show_expenses_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Начинает диалог для просмотра расходов.
+- `show_expenses(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает расходы за выбранный период.
+- `edit_profile_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Начинает диалог редактирования профиля.
+- `add_training_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Начинает диалог добавления новой тренировки.
+- `training_duration(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает продолжительность тренировки и запрашивает количество участников.
+- `training_participants(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает количество участников, определяет стоимость и запрашивает тип корта.
+- `training_court(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает тип корта и запрашивает имя тренера.
+- `training_coach(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает имя тренера, добавляет тренировку в базу данных и показывает итоговую информацию.
+- `show_stats_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Начинает диалог для просмотра статистики.
+- `show_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает статистику по тренировкам и расходам за выбранный период.
+- `show_training_history(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает историю последних 10 тренировок.
+- `show_profile(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает информацию о профиле пользователя.
+- `cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Отменяет текущий диалог (ConversationHandler).
+- `unknown_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Обрабатывает любые неизвестные команды.
+- `edit_subscription_choice(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Обрабатывает выбор пользователя в меню редактирования абонементов (добавить старый или редактировать существующий).
+- `add_old_sub_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Начинает диалог добавления старого абонемента, запрашивая его номер.
+- `add_old_sub_number(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает номер старого абонемента и запрашивает количество посещений.
+- `add_old_sub_visits(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает количество посещений и запрашивает стоимость.
+- `add_old_sub_cost(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает стоимость и запрашивает дату начала.
+- `add_old_sub_start_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает дату начала и запрашивает дату окончания.
+- `add_old_sub_end_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает дату окончания, добавляет старый абонемент в базу данных и завершает диалог.
+- `edit_sub_select_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Показывает пользователю список его абонементов для выбора того, который нужно отредактировать.
+- `edit_sub_select(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает выбор пользователя и запрашивает, какое поле абонемента нужно отредактировать.
+- `edit_sub_field(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает поле для редактирования и запрашивает новое значение.
+- `edit_sub_new_value(self, update: Update, context: ContextTypes.DEFAULT_TYPE)`: Получает новое значение, обновляет информацию об абонементе в базе данных и завершает диалог.
+
+---
+
+## Описание функций из `keyboards.py`
+
+- `get_main_menu()`: Создает и возвращает клавиатуру главного меню с кнопками "Тренировки", "Абонементы" и "Профиль".
+- `get_workouts_menu()`: Создает и возвращает клавиатуру меню тренировок с кнопками "Добавить тренировку", "Статистика", "История тренировок" и "Назад".
+- `get_subscriptions_menu()`: Создает и возвращает клавиатуру меню абонементов с кнопками "Баланс", "Новый абонемент", "Архив", "Пополнить", "Расходы" и "Закрыть абонемент".
+- `get_profile_menu()`: Создает и возвращает клавиатуру меню профиля с кнопками "Показать профиль", "Редактировать профиль" и "Назад".
+- `get_duration_keyboard()`: Создает и возвращает клавиатуру для выбора продолжительности тренировки (60, 90, 120 минут).
+- `get_participants_keyboard()`: Создает и возвращает клавиатуру для выбора количества участников тренировки (1, 2, 3, 4).
+- `get_court_type_keyboard()`: Создает и возвращает клавиатуру для выбора типа корта (открытый, крытый, хард, грунт).
+- `get_coach_keyboard()`: Создает и возвращает клавиатуру для ввода имени тренера с опцией "пропустить".
+- `get_stats_period_keyboard()`: Создает и возвращает клавиатуру для выбора периода статистики (неделя, месяц, год, все время).
+- `get_participants_filter_keyboard()`: Создает и возвращает клавиатуру для фильтрации по количеству участников.
+- `remove_keyboard()`: Создает и возвращает объект для удаления текущей клавиатуры у пользователя.
+- `get_edit_profile_menu()`: Создает и возвращает клавиатуру для меню редактирования профиля с кнопками "Редактировать абонементы" и "Назад".
+- `get_edit_subscription_menu()`: Создает и возвращает клавиатуру для меню редактирования абонементов с кнопками "Добавить старый абонемент", "Редактировать абонемент" и "Назад".
+- `get_subscriptions_keyboard(subscriptions)`: Динамически создает и возвращает клавиатуру со списком абонементов пользователя для выбора.
+- `get_edit_subscription_field_menu()`: Создает и возвращает клавиатуру с полями абонемента, доступными для редактирования (Номер, Количество посещений, Стоимость и т.д.).

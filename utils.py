@@ -43,6 +43,15 @@ def format_phone(phone: str) -> str:
     return phone  # Возвращаем как есть, если формат неизвестен
 
 
+def validate_date(date_string: str) -> bool:
+    """Проверяет, соответствует ли строка формату YYYY-MM-DD."""
+    try:
+        datetime.strptime(date_string, '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
+
+
 def get_period_name(period: str) -> str:
     """Возвращает человекочитаемое название периода."""
     return {

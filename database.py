@@ -46,6 +46,7 @@ class Database:
                     start_date DATE NOT NULL,
                     end_date DATE,
                     status TEXT DEFAULT 'active',
+                    visits INTEGER,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
@@ -356,10 +357,58 @@ class Database:
         with self.get_connection() as conn:
             date_filter = self._get_date_filter(period)
             cursor = conn.execute('''
-                SELECT transaction_type as type, amount, created_at as date 
-                FROM transactions 
+                SELECT transaction_type as type, amount, created_at as date
+                FROM transactions
                 WHERE user_id = ? AND created_at >= ?
                 ORDER BY created_at DESC
             ''', (user_id, date_filter))
             columns = [description[0] for description in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def add_old_subscription(self, user_id: int, subscription_number: str, initial_amount: float,
+                             visits: int, start_date: str, end_date: Optional[str] = None):
+        with self.get_connection() as conn:
+            status = 'closed' if end_date else 'active'
+            cursor = conn.execute('''
+                INSERT INTO subscriptions (user_id, subscription_number, initial_amount, current_balance, start_date, end_date, status, visits)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, subscription_number, initial_amount, initial_amount, start_date, end_date, status, visits))
+            return cursor.lastrowid
+
+    def get_subscription_by_id(self, subscription_id: int) -> Optional[Dict]:
+        with self.get_connection() as conn:
+            cursor = conn.execute('SELECT * FROM subscriptions WHERE id = ?', (subscription_id,))
+            columns = [description[0] for description in cursor.description]
+            row = cursor.fetchone()
+            return dict(zip(columns, row)) if row else None
+
+    def update_subscription(self, subscription_id: int, field: str, value):
+        with self.get_connection() as conn:
+            if field == 'initial_amount':
+                # При изменении initial_amount пересчитываем current_balance
+                expenses_result = conn.execute('''
+                    SELECT COALESCE(SUM(amount), 0) FROM transactions
+                    WHERE subscription_id = ? AND transaction_type = 'expense'
+                ''', (subscription_id,)).fetchone()
+                expenses = expenses_result[0] if expenses_result else 0
+                new_balance = float(value) - expenses
+                conn.execute('''
+                    UPDATE subscriptions
+                    SET initial_amount = ?, current_balance = ?
+                    WHERE id = ?
+                ''', (value, new_balance, subscription_id))
+            else:
+                # Для других полей просто обновляем значение
+                query = f"UPDATE subscriptions SET {field} = ? WHERE id = ?"
+                conn.execute(query, (value, subscription_id))
+
+    def get_all_user_subscriptions(self, user_id: int) -> List[Dict]:
+        with self.get_connection() as conn:
+            cursor = conn.execute('''
+                SELECT * FROM subscriptions
+                WHERE user_id = ?
+                ORDER BY start_date DESC
+            ''', (user_id,))
+            columns = [description[0] for description in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    

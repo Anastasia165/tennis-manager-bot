@@ -102,7 +102,41 @@ def main():
         states={
             config.STATES['EXPENSES_PERIOD']: [MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.show_expenses)],
         },
-        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'), handlers.cancel)]
+        fallbacks=[CommandHandler('cancel', handlers.cancel), MessageHandler(filters.Regex('^❌ Отмена$'),
+                                                                             handlers.cancel)]
+    )
+
+    # 8. Диалог для редактирования профиля
+    edit_profile_handler = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex('^✏️ Редактировать профиль$'), handlers.edit_profile_start)],
+        states={
+            config.STATES['EDIT_PROFILE_CHOICE']: [MessageHandler(filters.Regex('^Редактировать абонементы$'),
+                                                                  handlers.edit_subscription_choice),],
+            config.STATES['EDIT_SUBSCRIPTION_CHOICE']: [MessageHandler(filters.Regex('^Добавить старый абонемент$'),
+                                                                       handlers.add_old_sub_start),
+                                                        MessageHandler(filters.Regex('^Редактировать абонемент$'),
+                                                                       handlers.edit_sub_select_start),],
+            config.STATES['ADD_OLD_SUB_NUMBER']: [MessageHandler(filters.TEXT & ~filters.COMMAND,
+                                                                 handlers.add_old_sub_number)],
+            config.STATES['ADD_OLD_SUB_VISITS']: [MessageHandler(filters.TEXT & ~filters.COMMAND,
+                                                                 handlers.add_old_sub_visits)],
+            config.STATES['ADD_OLD_SUB_COST']: [MessageHandler(filters.TEXT & ~filters.COMMAND,
+                                                               handlers.add_old_sub_cost)],
+            config.STATES['ADD_OLD_SUB_START_DATE']: [MessageHandler(filters.TEXT & ~filters.COMMAND,
+                                                                     handlers.add_old_sub_start_date)],
+            config.STATES['ADD_OLD_SUB_END_DATE']: [MessageHandler(filters.TEXT & ~filters.COMMAND,
+                                                                   handlers.add_old_sub_end_date)],
+            config.STATES['EDIT_SUB_SELECT']: [MessageHandler(filters.TEXT & ~filters.COMMAND,
+                                                              handlers.edit_sub_select)],
+            config.STATES['EDIT_SUB_FIELD']: [MessageHandler(filters.TEXT & ~filters.COMMAND,
+                                                             handlers.edit_sub_field)],
+            config.STATES['EDIT_SUB_NEW_VALUE']: [MessageHandler(filters.TEXT & ~filters.COMMAND,
+                                                                 handlers.edit_sub_new_value)],
+        },
+        fallbacks=[
+            MessageHandler(filters.Regex('^Назад$'), handlers.back_to_main_menu),
+            CommandHandler('cancel', handlers.cancel)
+        ],
     )
 
     # Добавляем все диалоги в приложение
@@ -113,6 +147,7 @@ def main():
     application.add_handler(close_subscription_conv)
     application.add_handler(top_up_conv)
     application.add_handler(expenses_conv)
+    application.add_handler(edit_profile_handler)
 
     # Обработчики для навигации по меню (не являются частью диалогов)
     application.add_handler(MessageHandler(filters.Regex('^💪 Тренировки$'), handlers.show_workouts_menu))
@@ -125,7 +160,7 @@ def main():
     application.add_handler(MessageHandler(filters.Regex('^📋 История тренировок$'), handlers.show_training_history))
     application.add_handler(MessageHandler(filters.Regex('^🗂️ Архив$'), handlers.show_archived_subscriptions))
     application.add_handler(MessageHandler(filters.Regex('^ℹ️ Показать профиль$'), handlers.show_profile))
-    application.add_handler(MessageHandler(filters.Regex('^✏️ Редактировать профиль$'), handlers.edit_profile_start))
+    # application.add_handler(MessageHandler(filters.Regex('^✏️ Редактировать профиль$'), handlers.edit_profile_start))
 
     # Обработчик для неизвестных команд (должен быть последним)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.unknown_command))

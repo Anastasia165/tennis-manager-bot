@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
 import logging
+from datetime import datetime
 from database import Database
 from keyboards import *
 from utils import *
@@ -30,7 +31,7 @@ class Handlers:
             return ConversationHandler.END
         else:
             await update.message.reply_text(
-                "Добро пожаловать в Tennis Club Bot! 🎾\n"
+                "Добро пожаловать в Tennis Bot! 🎾\n"
                 "Для регистрации введите ваше имя:"
             )
             return config.STATES['REGISTER_FIRST_NAME']
@@ -100,6 +101,7 @@ class Handlers:
     async def show_profile_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "Меню профиля:",
+            # reply_markup=get_edit_profile_menu()
             reply_markup=get_profile_menu()
         )
 
@@ -307,8 +309,8 @@ class Handlers:
         await update.message.reply_text(message, parse_mode=ParseMode.HTML, reply_markup=get_subscriptions_menu())
         return ConversationHandler.END
 
-    async def edit_profile_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("Эта функция находится в разработке.", reply_markup=get_profile_menu())
+    # async def edit_profile_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #     await update.message.reply_text("Эта функция находится в разработке.", reply_markup=get_profile_menu())
 
     async def add_training_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = self.db.get_user(update.effective_user.id)
@@ -327,7 +329,6 @@ class Handlers:
             reply_markup=get_duration_keyboard()
         )
         return config.STATES['TRAINING_DURATION']
-
 
     async def training_duration(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         duration_text = update.message.text
@@ -508,20 +509,177 @@ class Handlers:
         message = (
             f"👤 <b>Ваш профиль</b>\n\n"
             f"Имя: {user['first_name']} {user['last_name'] or ''}\n"
-            f"Телефон: {user['phone'] or 'Не указан'}\n"
+            f"Телефон: {user['phone'] or 'не указан'}\n"
             f"Дата регистрации: {format_date(user['registration_date'])}\n\n"
-            f"🎾 Всего тренировок: <b>{total_trainings}</b>\n"
+            f"Всего тренировок: <b>{total_trainings}</b>\n"
         )
 
         if subscription:
             message += (
-                f"💰 Активный абонемент: {subscription['subscription_number']}\n"
+                f"💳 Активный абонемент: {subscription['subscription_number']}\n"
                 f"Баланс: {format_amount(subscription['current_balance'])}"
             )
         else:
-            message += "❌ Нет активного абонемента"
+            message += "У вас нет активного абонемента"
 
         await update.message.reply_text(message, parse_mode=ParseMode.HTML)
+
+    async def edit_profile_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text(
+            "Выберите, что вы хотите сделать:",
+            reply_markup=get_edit_profile_menu()
+        )
+        return config.STATES['EDIT_PROFILE_CHOICE']
+
+    async def edit_subscription_choice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        text = update.message.text
+        if text == "Редактировать абонементы":
+            await update.message.reply_text(
+                "Редактирование абонементов:",
+                reply_markup=get_edit_subscription_menu()
+            )
+            return config.STATES['EDIT_SUBSCRIPTION_CHOICE']
+        else:
+            return await self.back_to_main_menu(update, context)
+
+    async def add_old_sub_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("Введите номер старого абонемента:", reply_markup=remove_keyboard())
+        return config.STATES['ADD_OLD_SUB_NUMBER']
+
+    async def add_old_sub_number(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        context.user_data['old_sub_number'] = update.message.text
+        await update.message.reply_text("Введите количество посещений:")
+        return config.STATES['ADD_OLD_SUB_VISITS']
+
+    async def add_old_sub_visits(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        try:
+            context.user_data['old_sub_visits'] = int(update.message.text)
+            await update.message.reply_text("Введите стоимость абонемента:")
+            return config.STATES['ADD_OLD_SUB_COST']
+        except ValueError:
+            await update.message.reply_text("Пожалуйста, введите число.")
+            return config.STATES['ADD_OLD_SUB_VISITS']
+
+    async def add_old_sub_cost(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        try:
+            context.user_data['old_sub_cost'] = float(update.message.text.replace(',', '.'))
+            await update.message.reply_text("Введите дату начала в формате ГГГГ-ММ-ДД:")
+            return config.STATES['ADD_OLD_SUB_START_DATE']
+        except ValueError:
+            await update.message.reply_text("Пожалуйста, введите число.")
+            return config.STATES['ADD_OLD_SUB_COST']
+
+    async def add_old_sub_start_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        date_text = update.message.text
+        if not validate_date(date_text):
+            await update.message.reply_text("❌ Неверный формат даты. Введите дату в формате ГГГГ-ММ-ДД:")
+            return config.STATES['ADD_OLD_SUB_START_DATE']
+
+        context.user_data['old_sub_start_date'] = date_text
+        await update.message.reply_text("Введите дату окончания в формате ГГГГ-ММ-ДД (или отправьте 'пропустить'):")
+        return config.STATES['ADD_OLD_SUB_END_DATE']
+
+    async def add_old_sub_end_date(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        end_date = update.message.text
+        if end_date.lower() == 'пропустить':
+            end_date = None
+        elif not validate_date(end_date):
+            await update.message.reply_text("❌ Неверный формат даты. Введите дату в формате ГГГГ-ММ-ДД или 'пропустить':")
+            return config.STATES['ADD_OLD_SUB_END_DATE']
+
+        user = self.db.get_user(update.effective_user.id)
+        self.db.add_old_subscription(
+            user_id=user['id'],
+            subscription_number=context.user_data['old_sub_number'],
+            initial_amount=context.user_data['old_sub_cost'],
+            visits=context.user_data['old_sub_visits'],
+            start_date=context.user_data['old_sub_start_date'],
+            end_date=end_date
+        )
+        await update.message.reply_text("Старый абонемент успешно добавлен!", reply_markup=get_main_menu())
+        return ConversationHandler.END
+
+    async def edit_sub_select_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user = self.db.get_user(update.effective_user.id)
+        subscriptions = self.db.get_all_user_subscriptions(user['id'])
+        if not subscriptions:
+            await update.message.reply_text("У вас нет абонементов для редактирования.", reply_markup=get_main_menu())
+            return ConversationHandler.END
+
+        await update.message.reply_text(
+            "Выберите абонемент для редактирования:",
+            reply_markup=get_subscriptions_keyboard(subscriptions)
+        )
+        return config.STATES['EDIT_SUB_SELECT']
+
+    async def edit_sub_select(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        selected_sub_text = update.message.text
+        sub_id = int(selected_sub_text.split('№')[1].split(' ')[0])
+        context.user_data['edit_sub_id'] = sub_id
+        await update.message.reply_text(
+            "Что вы хотите отредактировать?",
+            reply_markup=get_edit_subscription_field_menu()
+        )
+        return config.STATES['EDIT_SUB_FIELD']
+
+    async def edit_sub_field(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        field_map = {
+            'Номер': 'subscription_number',
+            'Количество посещений': 'visits',
+            'Стоимость': 'initial_amount',
+            'Дата начала': 'start_date',
+            'Дата окончания': 'end_date'
+        }
+        field_to_edit = update.message.text
+        if field_to_edit not in field_map:
+            await update.message.reply_text("Неверное поле. Попробуйте еще раз.", reply_markup=get_edit_subscription_field_menu())
+            return config.STATES['EDIT_SUB_FIELD']
+
+        context.user_data['edit_sub_field'] = field_map[field_to_edit]
+        await update.message.reply_text(f"Введите новое значение для '{field_to_edit}':", reply_markup=remove_keyboard())
+        return config.STATES['EDIT_SUB_NEW_VALUE']
+
+    async def edit_sub_new_value(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        new_value = update.message.text
+        sub_id = context.user_data['edit_sub_id']
+        field = context.user_data['edit_sub_field']
+        field_name_map = {
+            'subscription_number': 'Номер',
+            'visits': 'Количество посещений',
+            'initial_amount': 'Стоимость',
+            'start_date': 'Дата начала',
+            'end_date': 'Дата окончания'
+        }
+        field_name = field_name_map.get(field, field)
+
+        # Валидация
+        if field in ['start_date', 'end_date']:
+            if new_value.lower() != 'пропустить' and not validate_date(new_value):
+                await update.message.reply_text(f"❌ Неверный формат даты для поля '{field_name}'. Введите дату в формате ГГГГ-ММ-ДД или 'пропустить':")
+                return config.STATES['EDIT_SUB_NEW_VALUE']
+            if new_value.lower() == 'пропустить':
+                new_value = None
+        elif field == 'visits':
+            try:
+                new_value = int(new_value)
+            except ValueError:
+                await update.message.reply_text(f"❌ Поле '{field_name}' должно быть целым числом. Попробуйте еще раз:")
+                return config.STATES['EDIT_SUB_NEW_VALUE']
+        elif field == 'initial_amount':
+            try:
+                new_value = float(new_value.replace(',', '.'))
+            except ValueError:
+                await update.message.reply_text(f"❌ Поле '{field_name}' должно быть числом. Попробуйте еще раз:")
+                return config.STATES['EDIT_SUB_NEW_VALUE']
+
+        try:
+            self.db.update_subscription(sub_id, field, new_value)
+            await update.message.reply_text("✅ Абонемент успешно обновлен!", reply_markup=get_main_menu())
+            return ConversationHandler.END
+        except Exception as e:
+            self.logger.error(f"Failed to update subscription {sub_id} with field {field}: {e}", exc_info=True)
+            await update.message.reply_text("❌ Произошла ошибка при обновлении. Попробуйте позже.", reply_markup=get_main_menu())
+            return ConversationHandler.END
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(

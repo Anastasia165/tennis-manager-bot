@@ -30,6 +30,16 @@ class Config:
         'CLOSE_SUBSCRIPTION_CONFIRM': 11,
         'TOP_UP_AMOUNT': 12,
         'EXPENSES_PERIOD': 13,
+        'EDIT_PROFILE_CHOICE': 14,
+        'EDIT_SUBSCRIPTION_CHOICE': 15,
+        'ADD_OLD_SUB_NUMBER': 16,
+        'ADD_OLD_SUB_VISITS': 17,
+        'ADD_OLD_SUB_COST': 18,
+        'ADD_OLD_SUB_START_DATE': 19,
+        'ADD_OLD_SUB_END_DATE': 20,
+        'EDIT_SUB_SELECT': 21,
+        'EDIT_SUB_FIELD': 22,
+        'EDIT_SUB_NEW_VALUE': 23,
     })
 
 
