@@ -115,7 +115,7 @@ def get_subscriptions_keyboard(subscriptions):
 
 def get_edit_subscription_field_menu():
     keyboard = [
-        ['Номер', 'Количество посещений'],
+        ['Номер'],
         ['Стоимость', 'Дата начала'],
         ['Дата окончания', 'Назад']
     ]

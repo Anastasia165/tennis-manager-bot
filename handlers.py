@@ -550,6 +550,13 @@ class Handlers:
         context.user_data['old_sub_number'] = update.message.text
         await update.message.reply_text("Введите количество посещений:")
         return config.STATES['ADD_OLD_SUB_VISITS']
+        # try:
+        #     context.user_data['old_sub_visits'] = int(update.message.text)
+        #     await update.message.reply_text("Введите стоимость абонемента:")
+        #     return config.STATES['ADD_OLD_SUB_COST']
+        # except ValueError:
+        #     await update.message.reply_text("Пожалуйста, введите число.")
+        #     return config.STATES['ADD_OLD_SUB_NUMBER']
 
     async def add_old_sub_visits(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
@@ -588,6 +595,7 @@ class Handlers:
             return config.STATES['ADD_OLD_SUB_END_DATE']
 
         user = self.db.get_user(update.effective_user.id)
+        self.logger.info(f"old_sub_number {context.user_data}")
         self.db.add_old_subscription(
             user_id=user['id'],
             subscription_number=context.user_data['old_sub_number'],
@@ -625,7 +633,6 @@ class Handlers:
     async def edit_sub_field(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         field_map = {
             'Номер': 'subscription_number',
-            'Количество посещений': 'visits',
             'Стоимость': 'initial_amount',
             'Дата начала': 'start_date',
             'Дата окончания': 'end_date'
@@ -645,7 +652,6 @@ class Handlers:
         field = context.user_data['edit_sub_field']
         field_name_map = {
             'subscription_number': 'Номер',
-            'visits': 'Количество посещений',
             'initial_amount': 'Стоимость',
             'start_date': 'Дата начала',
             'end_date': 'Дата окончания'
@@ -659,12 +665,6 @@ class Handlers:
                 return config.STATES['EDIT_SUB_NEW_VALUE']
             if new_value.lower() == 'пропустить':
                 new_value = None
-        elif field == 'visits':
-            try:
-                new_value = int(new_value)
-            except ValueError:
-                await update.message.reply_text(f"❌ Поле '{field_name}' должно быть целым числом. Попробуйте еще раз:")
-                return config.STATES['EDIT_SUB_NEW_VALUE']
         elif field == 'initial_amount':
             try:
                 new_value = float(new_value.replace(',', '.'))

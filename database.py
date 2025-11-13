@@ -370,9 +370,9 @@ class Database:
         with self.get_connection() as conn:
             status = 'closed' if end_date else 'active'
             cursor = conn.execute('''
-                INSERT INTO subscriptions (user_id, subscription_number, initial_amount, current_balance, start_date, end_date, status, visits)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, subscription_number, initial_amount, initial_amount, start_date, end_date, status, visits))
+                INSERT INTO subscriptions (user_id, subscription_number, initial_amount, current_balance, start_date, end_date, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, subscription_number, initial_amount, initial_amount, start_date, end_date, status))
             return cursor.lastrowid
 
     def get_subscription_by_id(self, subscription_id: int) -> Optional[Dict]:
