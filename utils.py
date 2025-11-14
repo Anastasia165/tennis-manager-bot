@@ -3,11 +3,13 @@ from functools import wraps
 from typing import Any, Callable
 import re
 from datetime import datetime
+from aiogram.types import Message
 
 
 def format_amount(amount: float) -> str:
     """Форматирует сумму в строку с валютой."""
     return f"{amount:,.2f} ₽".replace(',', ' ')
+
 
 def format_date(date_str: str) -> str:
     """Форматирует дату из строки YYYY-MM-DD в DD.MM.YYYY."""
@@ -24,10 +26,7 @@ def format_date(date_str: str) -> str:
 
 def validate_phone(phone: str) -> bool:
     """Проверяет, соответствует ли номер телефона российскому формату."""
-    # Удаляем все, кроме цифр
     cleaned_phone = re.sub(r'\D', '', phone)
-    # Проверяем, начинается ли номер с 7, 8 или 9 и имеет ли он 11 цифр
-    # или начинается с 9 и имеет 10 цифр
     if re.match(r'^(7|8)?(\d{10})$', cleaned_phone):
         return True
     return False
@@ -40,7 +39,7 @@ def format_phone(phone: str) -> str:
         return '+7' + cleaned_phone[1:]
     if len(cleaned_phone) == 10:
         return '+7' + cleaned_phone
-    return phone  # Возвращаем как есть, если формат неизвестен
+    return phone
 
 
 def validate_date(date_string: str) -> bool:
@@ -67,19 +66,16 @@ def log_command(func: Callable) -> Callable:
 
     @wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        from telegram import Update
         logger = logging.getLogger(f'bot.commands')
+        
+        # message is the first argument of the handler
+        message = next((arg for arg in args if isinstance(arg, Message)), None)
 
-        # The 'update' object is the first argument that is an instance of the Update class
-        update = next((arg for arg in args if isinstance(arg, Update)), None)
-
-        if not update:
-            # If we can't find the update object, we can't get the user.
-            # We'll log a warning and call the function without user info.
-            logger.warning(f"Could not find Update object for command '{func.__name__}'")
+        if not message:
+            logger.warning(f"Could not find Message object for command '{func.__name__}'")
             return await func(*args, **kwargs)
 
-        user = update.effective_user
+        user = message.from_user
         command = func.__name__
 
         logger.info(

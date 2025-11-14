@@ -1,89 +1,89 @@
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 
 def get_main_menu():
     keyboard = [
-        ['💪 Тренировки', '💳 Абонементы'],
-        ['👤 Профиль']
+        [KeyboardButton(text='💪 Тренировки'), KeyboardButton(text='💳 Абонементы')],
+        [KeyboardButton(text='👤 Профиль')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_workouts_menu():
     keyboard = [
-        ['➕ Добавить тренировку', '📈 Статистика'],
-        ['📋 История тренировок', '🔙 Назад']
+        [KeyboardButton(text='➕ Добавить тренировку'), KeyboardButton(text='📈 Статистика')],
+        [KeyboardButton(text='📋 История тренировок'), KeyboardButton(text='🔙 Назад')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_subscriptions_menu():
     keyboard = [
-        ['💰 Баланс', '🔄 Новый абонемент'],
-        ['🗂️ Архив', '💸 Пополнить'],
-        ['📊 Расходы', '🚫 Закрыть абонемент'],
-        ['🔙 Назад']
+        [KeyboardButton(text='💰 Баланс'), KeyboardButton(text='🔄 Новый абонеент')],
+        [KeyboardButton(text='🗂️ Архив'), KeyboardButton(text='💸 Пополнить')],
+        [KeyboardButton(text='📊 Расходы'), KeyboardButton(text='🚫 Закрыть абонемент')],
+        [KeyboardButton(text='🔙 Назад')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_profile_menu():
     keyboard = [
-        ['ℹ️ Показать профиль', '✏️ Редактировать профиль'],
-        ['🔙 Назад']
+        [KeyboardButton(text='ℹ️ Показать профиль'), KeyboardButton(text='✏️ Редактировать профиль')],
+        [KeyboardButton(text='🔙 Назад')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_duration_keyboard():
     keyboard = [
-        ['60 минут', '90 минут'],
-        ['120 минут', '❌ Отмена']
+        [KeyboardButton(text='60 минут'), KeyboardButton(text='90 минут')],
+        [KeyboardButton(text='120 минут'), KeyboardButton(text='❌ Отмена')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_participants_keyboard():
     keyboard = [
-        ['1 человек', '2 человека'],
-        ['3 человека', '4 человека'],
-        ['❌ Отмена']
+        [KeyboardButton(text='1 человек'), KeyboardButton(text='2 человека')],
+        [KeyboardButton(text='3 человека'), KeyboardButton(text='4 человека')],
+        [KeyboardButton(text='❌ Отмена')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_court_type_keyboard():
     keyboard = [
-        ['Крытый корт', 'Открытый корт'],
-        ['Грунт', 'Хард'],
-        ['Пропустить']
+        [KeyboardButton(text='Крытый корт'), KeyboardButton(text='Открытый корт')],
+        [KeyboardButton(text='Грунт'), KeyboardButton(text='Хард')],
+        [KeyboardButton(text='Пропустить')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_coach_keyboard():
     keyboard = [
-        ['Пропустить'],
-        ['❌ Отмена']
+        [KeyboardButton(text='Пропустить')],
+        [KeyboardButton(text='❌ Отмена')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True, one_time_keyboard=True)
 
 
 def get_stats_period_keyboard():
     keyboard = [
-        ['📅 За неделю', '📅 За месяц'],
-        ['📅 За год', '📅 За все время'],
-        ['❌ Отмена']
+        [KeyboardButton(text='📅 За неделю'), KeyboardButton(text='📅 За месяц')],
+        [KeyboardButton(text='📅 За год'), KeyboardButton(text='📅 За все время')],
+        [KeyboardButton(text='❌ Отмена')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_participants_filter_keyboard():
     keyboard = [
-        ['Все', '1 человек', '2 человека'],
-        ['3 человека', '4 человека', '❌ Отмена']
+        [KeyboardButton(text='Все'), KeyboardButton(text='1 человек'), KeyboardButton(text='2 человека')],
+        [KeyboardButton(text='3 человека'), KeyboardButton(text='4 человека'), KeyboardButton(text='❌ Отмена')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def remove_keyboard():
@@ -92,31 +92,31 @@ def remove_keyboard():
 
 def get_edit_profile_menu():
     keyboard = [
-        ['Редактировать абонементы'],
-        ['Назад']
+        [KeyboardButton(text='Редактировать абонементы')],
+        [KeyboardButton(text='Назад')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_edit_subscription_menu():
     keyboard = [
-        ['Добавить старый абонемент'],
-        ['Редактировать абонемент'],
-        ['Назад']
+        [KeyboardButton(text='Добавить старый абонемент')],
+        [KeyboardButton(text='Редактировать абонемент')],
+        [KeyboardButton(text='Назад')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_subscriptions_keyboard(subscriptions):
-    keyboard = [[f"Абонемент №{sub['id']} от {sub['start_date']}"] for sub in subscriptions]
-    keyboard.append(['Назад'])
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    keyboard = [[KeyboardButton(text=f"Абонемент №{sub['id']} от {sub['start_date']}")] for sub in subscriptions]
+    keyboard.append([KeyboardButton(text='Назад')])
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
 def get_edit_subscription_field_menu():
     keyboard = [
-        ['Номер'],
-        ['Стоимость', 'Дата начала'],
-        ['Дата окончания', 'Назад']
+        [KeyboardButton(text='Номер')],
+        [KeyboardButton(text='Стоимость'), KeyboardButton(text='Дата начала')],
+        [KeyboardButton(text='Дата окончания'), KeyboardButton(text='Назад')]
     ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)

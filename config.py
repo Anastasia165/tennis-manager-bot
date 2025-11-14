@@ -1,8 +1,56 @@
 import os
 from dataclasses import dataclass, field
 from dotenv import load_dotenv
+from aiogram.fsm.state import StatesGroup, State
 
 load_dotenv()
+
+
+class RegistrationStates(StatesGroup):
+    REGISTER_FIRST_NAME = State()
+    REGISTER_LAST_NAME = State()
+    REGISTER_PHONE = State()
+
+
+class NewSubscriptionStates(StatesGroup):
+    NEW_SUBSCRIPTION_NUMBER = State()
+    NEW_SUBSCRIPTION_AMOUNT = State()
+
+
+class AddTrainingStates(StatesGroup):
+    TRAINING_DURATION = State()
+    TRAINING_PARTICIPANTS = State()
+    TRAINING_COURT = State()
+    TRAINING_COACH = State()
+
+
+class StatsStates(StatesGroup):
+    STATS_PERIOD = State()
+
+
+class CloseSubscriptionStates(StatesGroup):
+    CLOSE_SUBSCRIPTION_CONFIRM = State()
+
+
+class TopUpStates(StatesGroup):
+    TOP_UP_AMOUNT = State()
+
+
+class ExpensesStates(StatesGroup):
+    EXPENSES_PERIOD = State()
+
+
+class EditProfileStates(StatesGroup):
+    EDIT_PROFILE_CHOICE = State()
+    EDIT_SUBSCRIPTION_CHOICE = State()
+    ADD_OLD_SUB_NUMBER = State()
+    ADD_OLD_SUB_VISITS = State()
+    ADD_OLD_SUB_COST = State()
+    ADD_OLD_SUB_START_DATE = State()
+    ADD_OLD_SUB_END_DATE = State()
+    EDIT_SUB_SELECT = State()
+    EDIT_SUB_FIELD = State()
+    EDIT_SUB_NEW_VALUE = State()
 
 
 @dataclass
@@ -15,32 +63,6 @@ class Config:
     # Настройки логирования
     LOG_LEVEL: str = os.getenv('LOG_LEVEL', 'INFO')
     LOG_DIR: str = os.getenv('LOG_DIR', 'logs')
-
-    STATES: dict = field(default_factory=lambda: {
-        'REGISTER_FIRST_NAME': 1,
-        'REGISTER_LAST_NAME': 2,
-        'REGISTER_PHONE': 3,
-        'NEW_SUBSCRIPTION_NUMBER': 4,
-        'NEW_SUBSCRIPTION_AMOUNT': 5,
-        'TRAINING_DURATION': 6,
-        'TRAINING_PARTICIPANTS': 7,
-        'TRAINING_COURT': 8,
-        'TRAINING_COACH': 9,
-        'STATS_PERIOD': 10,
-        'CLOSE_SUBSCRIPTION_CONFIRM': 11,
-        'TOP_UP_AMOUNT': 12,
-        'EXPENSES_PERIOD': 13,
-        'EDIT_PROFILE_CHOICE': 14,
-        'EDIT_SUBSCRIPTION_CHOICE': 15,
-        'ADD_OLD_SUB_NUMBER': 16,
-        'ADD_OLD_SUB_VISITS': 17,
-        'ADD_OLD_SUB_COST': 18,
-        'ADD_OLD_SUB_START_DATE': 19,
-        'ADD_OLD_SUB_END_DATE': 20,
-        'EDIT_SUB_SELECT': 21,
-        'EDIT_SUB_FIELD': 22,
-        'EDIT_SUB_NEW_VALUE': 23,
-    })
 
 
 config = Config()
