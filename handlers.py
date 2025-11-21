@@ -104,15 +104,15 @@ class Handlers:
 
     async def show_balance(self, message: Message, state: FSMContext):
         user = self.db.get_user(message.from_user.id)
-        subscription = self.db.get_active_subscription(user['id'])
+        subscription = self.db.get_active_subscription(user.id)
 
         if subscription:
             text = (
                 f"💰 <b>Ваш абонемент</b>\n"
-                f"Номер: {subscription['subscription_number']}\n"
-                f"Начальная сумма: {format_amount(subscription['initial_amount'])}\n"
-                f"Текущий баланс: <b>{format_amount(subscription['current_balance'])}</b>\n"
-                f"Дата начала: {format_date(subscription['start_date'])}"
+                f"Номер: {subscription.subscription_number}\n"
+                f"Начальная сумма: {format_amount(subscription.initial_amount)}\n"
+                f"Текущий баланс: <b>{format_amount(subscription.current_balance)}</b>\n"
+                f"Дата начала: {format_date(subscription.start_date)}"
             )
         else:
             text = (
@@ -123,7 +123,7 @@ class Handlers:
 
     async def new_subscription_start(self, message: Message, state: FSMContext):
         user = self.db.get_user(message.from_user.id)
-        if self.db.get_active_subscription(user['id']):
+        if self.db.get_active_subscription(user.id):
             await message.answer(
                 "❌ У вас уже есть активный абонемент.\n"
                 "Чтобы завести новый, сначала нужно закрыть текущий.",
@@ -149,7 +149,7 @@ class Handlers:
             user = self.db.get_user(message.from_user.id)
             user_data = await state.get_data()
             self.db.create_subscription(
-                user_id=user['id'],
+                user_id=user.id,
                 subscription_number=user_data['subscription_number'],
                 initial_amount=amount
             )
@@ -168,17 +168,17 @@ class Handlers:
 
     async def close_subscription_start(self, message: Message, state: FSMContext):
         user = self.db.get_user(message.from_user.id)
-        subscription = self.db.get_active_subscription(user['id'])
+        subscription = self.db.get_active_subscription(user.id)
 
         if not subscription:
             await message.answer("❌ У вас нет активного абонемента.", reply_markup=get_main_menu())
             await state.clear()
             return
 
-        if subscription['current_balance'] != 0:
+        if subscription.current_balance != 0:
             await message.answer(
                 f"❌ Нельзя закрыть абонемент с ненулевым балансом.\n"
-                f"Текущий баланс: {format_amount(subscription['current_balance'])}",
+                f"Текущий баланс: {format_amount(subscription.current_balance)}",
                 reply_markup=get_subscriptions_menu()
             )
             await state.clear()
@@ -194,8 +194,8 @@ class Handlers:
     async def close_subscription_confirm(self, message: Message, state: FSMContext):
         if message.text == 'Да':
             user = self.db.get_user(message.from_user.id)
-            subscription = self.db.get_active_subscription(user['id'])
-            self.db.close_subscription(subscription['id'])
+            subscription = self.db.get_active_subscription(user.id)
+            self.db.close_subscription(subscription.id)
             await message.answer("✅ Абонемент успешно закрыт.", reply_markup=get_main_menu())
         else:
             await message.answer("Действие отменено.", reply_markup=get_subscriptions_menu())
@@ -203,7 +203,7 @@ class Handlers:
 
     async def top_up_subscription_start(self, message: Message, state: FSMContext):
         user = self.db.get_user(message.from_user.id)
-        if not self.db.get_active_subscription(user['id']):
+        if not self.db.get_active_subscription(user.id):
             await message.answer("❌ У вас нет активного абонемента.", reply_markup=get_main_menu())
             await state.clear()
             return
@@ -218,8 +218,8 @@ class Handlers:
                 raise ValueError
 
             user = self.db.get_user(message.from_user.id)
-            subscription = self.db.get_active_subscription(user['id'])
-            self.db.top_up_subscription(subscription['id'], amount)
+            subscription = self.db.get_active_subscription(user.id)
+            self.db.top_up_subscription(subscription.id, amount)
 
             await message.answer(
                 f"✅ Баланс абонемента пополнен на {format_amount(amount)}.",
@@ -233,7 +233,7 @@ class Handlers:
 
     async def show_archived_subscriptions(self, message: Message, state: FSMContext):
         user = self.db.get_user(message.from_user.id)
-        subscriptions = self.db.get_archived_subscriptions(user['id'])
+        subscriptions = self.db.get_archived_subscriptions(user.id)
 
         if not subscriptions:
             await message.answer("У вас нет закрытых абонементов.", reply_markup=get_subscriptions_menu())
@@ -242,9 +242,9 @@ class Handlers:
         text = "🗂️ <b>Архив абонементов:</b>\n\n"
         for sub in subscriptions:
             text += (
-                f"<b>Номер: {sub['subscription_number']}</b>\n"
-                f"Дата: {format_date(sub['start_date'])} - {format_date(sub['end_date'])}\n"
-                f"Начальная сумма: {format_amount(sub['initial_amount'])}\n\n"
+                f"<b>Номер: {sub.subscription_number}</b>\n"
+                f"Дата: {format_date(sub.start_date)} - {format_date(sub.end_date)}\n"
+                f"Начальная сумма: {format_amount(sub.initial_amount)}\n\n"
             )
 
         await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=get_subscriptions_menu())
@@ -269,7 +269,7 @@ class Handlers:
         period = period_map.get(period_text, 'month')
         user = self.db.get_user(message.from_user.id)
 
-        transactions = self.db.get_transactions(user['id'], period)
+        transactions = self.db.get_transactions(user.id, period)
 
         if not transactions:
             await message.answer(f"За {get_period_name(period)} не было расходов.", reply_markup=get_subscriptions_menu())
@@ -278,10 +278,10 @@ class Handlers:
         text = f"📊 <b>Расходы за {get_period_name(period)}:</b>\n\n"
         total_spent = 0
         for trans in transactions:
-            if trans['type'] == 'expense':
-                total_spent += trans['amount']
+            if trans.type == 'expense':
+                total_spent += trans.amount
                 text += (
-                    f"📅 {format_date(trans['date'])}: -{format_amount(trans['amount'])}\n"
+                    f"📅 {format_date(trans.date)}: -{format_amount(trans.amount)}\n"
                     f"   <i>Тренировка</i>\n"
                 )
 
@@ -292,7 +292,17 @@ class Handlers:
 
     async def add_training_start(self, message: Message, state: FSMContext):
         user = self.db.get_user(message.from_user.id)
-        subscription = self.db.get_active_subscription(user['id'])
+        # Добавьте проверку на существование пользователя
+        if not user:
+            await message.answer(
+                "❌ Вы не зарегистрированы в системе.\n"
+                "Пожалуйста, начните с команды /start",
+                reply_markup=get_main_menu()
+            )
+            await state.clear()
+            return
+
+        subscription = self.db.get_active_subscription(user.id)
 
         if not subscription:
             await message.answer(
@@ -364,21 +374,21 @@ class Handlers:
             coach = None
 
         user = self.db.get_user(message.from_user.id)
-        subscription = self.db.get_active_subscription(user['id'])
+        subscription = self.db.get_active_subscription(user.id)
         user_data = await state.get_data()
 
         try:
             self.db.add_training_session(
-                user_id=user['id'],
-                subscription_id=subscription['id'],
+                user_id=user.id,
+                subscription_id=subscription.id,
                 duration=user_data['duration'],
                 participants=user_data['participants'],
                 court_type=user_data['court_type'],
                 coach=coach
             )
 
-            updated_subscription = self.db.get_active_subscription(user['id'])
-            new_balance = updated_subscription['current_balance'] if updated_subscription else 0
+            updated_subscription = self.db.get_active_subscription(user.id)
+            new_balance = updated_subscription.current_balance if updated_subscription else 0
 
             text = (
                 f"✅ Тренировка добавлена!\n"
@@ -417,12 +427,12 @@ class Handlers:
         period = period_map.get(period_text, 'month')
         user = self.db.get_user(message.from_user.id)
 
-        spent_amount = self.db.get_spent_amount(user['id'], period)
-        training_count = self.db.get_training_count(user['id'], period)
-        individual = self.db.get_training_count(user['id'], period, 1)
-        pair = self.db.get_training_count(user['id'], period, 2)
-        group_3 = self.db.get_training_count(user['id'], period, 3)
-        group_4 = self.db.get_training_count(user['id'], period, 4)
+        spent_amount = self.db.get_spent_amount(user.id, period)
+        training_count = self.db.get_training_count(user.id, period)
+        individual = self.db.get_training_count(user.id, period, 1)
+        pair = self.db.get_training_count(user.id, period, 2)
+        group_3 = self.db.get_training_count(user.id, period, 3)
+        group_4 = self.db.get_training_count(user.id, period, 4)
 
         text = (
             f"📊 <b>Статистика за {get_period_name(period)}</b>\n\n"
@@ -440,7 +450,7 @@ class Handlers:
 
     async def show_training_history(self, message: Message, state: FSMContext):
         user = self.db.get_user(message.from_user.id)
-        trainings = self.db.get_user_trainings(user['id'], limit=10)
+        trainings = self.db.get_user_trainings(user.id, limit=10)
 
         if not trainings:
             await message.answer("У вас еще нет тренировок.")
@@ -470,8 +480,8 @@ class Handlers:
             await message.answer("Ваш профиль не найден. Пожалуйста, зарегистрируйтесь, используя команду /start.")
             return
 
-        subscription = self.db.get_active_subscription(user['id'])
-        total_trainings = self.db.get_training_count(user['id'], 'all')
+        subscription = self.db.get_active_subscription(user.id)
+        total_trainings = self.db.get_training_count(user.id, 'all')
 
         text = (
             f"👤 <b>Ваш профиль</b>\n\n"
@@ -483,8 +493,8 @@ class Handlers:
 
         if subscription:
             text += (
-                f"💳 Активный абонемент: {subscription['subscription_number']}\n"
-                f"Баланс: {format_amount(subscription['current_balance'])}"
+                f"💳 Активный абонемент: {subscription.subscription_number}\n"
+                f"Баланс: {format_amount(subscription.current_balance)}"
             )
         else:
             text += "У вас нет активного абонемента"
@@ -554,7 +564,7 @@ class Handlers:
         user_data = await state.get_data()
         self.logger.info(f"old_sub_number {user_data}")
         self.db.add_old_subscription(
-            user_id=user['id'],
+            user_id=user.id,
             subscription_number=user_data['old_sub_number'],
             initial_amount=user_data['old_sub_cost'],
             visits=user_data['old_sub_visits'],
@@ -566,7 +576,7 @@ class Handlers:
 
     async def edit_sub_select_start(self, message: Message, state: FSMContext):
         user = self.db.get_user(message.from_user.id)
-        subscriptions = self.db.get_all_user_subscriptions(user['id'])
+        subscriptions = self.db.get_all_user_subscriptions(user.id)
         if not subscriptions:
             await message.answer("У вас нет абонементов для редактирования.", reply_markup=get_main_menu())
             await state.clear()

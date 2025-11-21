@@ -1,7 +1,11 @@
-import sqlite3
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from contextlib import contextmanager
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
+
+from models import Base, User, Subscription, PriceList, TrainingSession, TrainingParticipant, Transaction
 from utils import log_database_operation
 
 logger = logging.getLogger(__name__)
@@ -12,236 +16,113 @@ class Database:
         self.db_path = db_path
         self.logger = logging.getLogger('bot.database')
         self.logger.info(f"Initializing database: {db_path}")
-        self.init_db()
+        self.engine = create_engine(f'sqlite:///{db_path}')
+        self.Session = sessionmaker(bind=self.engine)
 
-    def get_connection(self):
-        return sqlite3.connect(self.db_path)
-
-    def init_db(self):
-        """Инициализация базы данных"""
-        self.logger.info("Initializing database tables...")
+    @contextmanager
+    def get_session(self):
+        session = self.Session()
         try:
-            with self.get_connection() as conn:
-            # Таблица пользователей
-                conn.execute('''
-                        CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        telegram_id INTEGER UNIQUE NOT NULL,
-                        first_name TEXT NOT NULL,
-                        last_name TEXT,
-                        phone TEXT,
-                        registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        is_active BOOLEAN DEFAULT TRUE
-                    )
-                ''')
-
-            # Таблица абонементов
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS subscriptions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    subscription_number TEXT UNIQUE NOT NULL,
-                    initial_amount DECIMAL(10,2) NOT NULL,
-                    current_balance DECIMAL(10,2) NOT NULL,
-                    start_date DATE NOT NULL,
-                    end_date DATE,
-                    status TEXT DEFAULT 'active',
-                    visits INTEGER,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                )
-            ''')
-
-            # Таблица прайс-листа
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS price_list (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    duration_minutes INTEGER NOT NULL,
-                    participants_count INTEGER NOT NULL,
-                    price DECIMAL(10,2) NOT NULL,
-                    description TEXT,
-                    is_active BOOLEAN DEFAULT TRUE
-                )
-            ''')
-
-            # Таблица тренировок
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS training_sessions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    session_date DATE NOT NULL,
-                    session_time TIME NOT NULL,
-                    duration_minutes INTEGER NOT NULL,
-                    court_type TEXT,
-                    coach_name TEXT,
-                    notes TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-
-            # Таблица участников тренировок
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS training_participants (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    training_session_id INTEGER NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    subscription_id INTEGER NOT NULL,
-                    amount_paid DECIMAL(10,2) NOT NULL,
-                    participants_count INTEGER NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (training_session_id) REFERENCES training_sessions(id) ON DELETE CASCADE,
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                    FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE
-                )
-            ''')
-
-            # Таблица транзакций
-            conn.execute('''
-                        CREATE TABLE IF NOT EXISTS transactions (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            user_id INTEGER NOT NULL,
-                            subscription_id INTEGER NOT NULL,
-                            training_session_id INTEGER,
-                            transaction_type TEXT NOT NULL,
-                            amount DECIMAL(10,2) NOT NULL,
-                            description TEXT,
-                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
-                            FOREIGN KEY (training_session_id) REFERENCES training_sessions(id) ON DELETE SET NULL
-                            )
-                        ''')
-
-            # Заполняем прайс-лист начальными данными
-            self._init_price_list(conn)
-            conn.commit()
-            self.logger.info("Database initialized successfully")
-        except Exception as e:
-            self.logger.error(f"Database initialization failed: {e}")
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
             raise
-
-    def _init_price_list(self, conn):
-        """Инициализация прайс-листа"""
-        prices = [
-            (60, 1, 1500, "Индивидуальная 60 мин"),
-            (90, 1, 2000, "Индивидуальная 90 мин"),
-            (120, 1, 2500, "Индивидуальная 120 мин"),
-            (60, 2, 800, "Вдвоем 60 мин"),
-            (90, 2, 1200, "Вдвоем 90 мин"),
-            (120, 2, 1600, "Вдвоем 120 мин"),
-            (60, 3, 600, "Втроем 60 мин"),
-            (90, 3, 900, "Втроем 90 мин"),
-            (120, 3, 1200, "Втроем 120 мин"),
-            (60, 4, 500, "Вчетвером 60 мин"),
-            (90, 4, 750, "Вчетвером 90 мин"),
-            (120, 4, 1000, "Вчетвером 120 мин"),
-        ]
-
-        for duration, participants, price, description in prices:
-            conn.execute('''
-                INSERT OR IGNORE INTO price_list 
-                (duration_minutes, participants_count, price, description)
-                VALUES (?, ?, ?, ?)
-            ''', (duration, participants, price, description))
+        finally:
+            session.close()
 
     # Методы для работы с пользователями
     @log_database_operation
     def user_exists(self, telegram_id: int) -> bool:
-        with self.get_connection() as conn:
-            result = conn.execute(
-                'SELECT 1 FROM users WHERE telegram_id = ?',
-                (telegram_id,)
-            ).fetchone()
-            return result is not None
+        with self.get_session() as session:
+            return session.query(User).filter(User.telegram_id == telegram_id).first() is not None
 
     @log_database_operation
     def register_user(self, telegram_id: int, first_name: str, last_name: str = None, phone: str = None):
         self.logger.info(f"Registering new user: {telegram_id}, {first_name} {last_name}")
-        with self.get_connection() as conn:
-            conn.execute('''
-                INSERT INTO users (telegram_id, first_name, last_name, phone)
-                VALUES (?, ?, ?, ?)
-            ''', (telegram_id, first_name, last_name, phone))
-
-    def get_user(self, telegram_id: int) -> Optional[Dict]:
-        with self.get_connection() as conn:
-            cursor = conn.execute(
-                'SELECT * FROM users WHERE telegram_id = ?',
-                (telegram_id,)
+        with self.get_session() as session:
+            new_user = User(
+                telegram_id=telegram_id,
+                first_name=first_name,
+                last_name=last_name,
+                phone=phone
             )
-            columns = [description[0] for description in cursor.description]
-            row = cursor.fetchone()
-            return dict(zip(columns, row)) if row else None
+            session.add(new_user)
+
+    def get_user(self, telegram_id: int) -> Optional[User]:
+        try:
+            with self.get_session() as session:
+                return session.query(User).filter(User.telegram_id == telegram_id).first()
+        except Exception as e:
+            self.logger.error(f"Error getting user {telegram_id}: {e}")
+            return None
 
     # Методы для работы с абонементами
     def create_subscription(self, user_id: int, subscription_number: str, initial_amount: float):
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                INSERT INTO subscriptions (user_id, subscription_number, initial_amount, current_balance, start_date, status)
-                VALUES (?, ?, ?, ?, date('now'), 'active')
-            ''', (user_id, subscription_number, initial_amount, initial_amount))
-            return cursor.lastrowid
+        with self.get_session() as session:
+            new_subscription = Subscription(
+                user_id=user_id,
+                subscription_number=subscription_number,
+                initial_amount=initial_amount,
+                current_balance=initial_amount,
+                start_date=datetime.now().date()
+            )
+            session.add(new_subscription)
+            session.flush()
+            return new_subscription.id
 
-    def get_active_subscription(self, user_id: int) -> Optional[Dict]:
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT * FROM subscriptions 
-                WHERE user_id = ? AND status = 'active'
-                ORDER BY created_at DESC LIMIT 1
-            ''', (user_id,))
-            columns = [description[0] for description in cursor.description]
-            row = cursor.fetchone()
-            return dict(zip(columns, row)) if row else None
+    def get_active_subscription(self, user_id: int) -> Optional[Subscription]:
+        with self.get_session() as session:
+            return session.query(Subscription).filter(
+                Subscription.user_id == user_id,
+                Subscription.status == 'active'
+            ).order_by(Subscription.created_at.desc()).first()
 
     def close_subscription(self, subscription_id: int):
-        with self.get_connection() as conn:
-            conn.execute('''
-                UPDATE subscriptions 
-                SET status = 'closed', end_date = date('now')
-                WHERE id = ?
-            ''', (subscription_id,))
+        with self.get_session() as session:
+            subscription = session.query(Subscription).filter(Subscription.id == subscription_id).first()
+            if subscription:
+                subscription.status = 'closed'
+                subscription.end_date = datetime.now().date()
 
     def top_up_subscription(self, subscription_id: int, amount: float):
-        with self.get_connection() as conn:
-            conn.execute('''
-                UPDATE subscriptions 
-                SET current_balance = current_balance + ?
-                WHERE id = ?
-            ''', (amount, subscription_id))
-            
-            user_id = conn.execute('SELECT user_id FROM subscriptions WHERE id = ?', (subscription_id,)).fetchone()[0]
-            
-            conn.execute('''
-                INSERT INTO transactions (user_id, subscription_id, transaction_type, amount, description)
-                VALUES (?, ?, 'top-up', ?, 'Пополнение абонемента')
-            ''', (user_id, subscription_id, amount))
+        with self.get_session() as session:
+            subscription = session.query(Subscription).filter(Subscription.id == subscription_id).first()
+            if subscription:
+                subscription.current_balance += amount
+                new_transaction = Transaction(
+                    user_id=subscription.user_id,
+                    subscription_id=subscription_id,
+                    transaction_type='top-up',
+                    amount=amount,
+                    description='Пополнение абонемента'
+                )
+                session.add(new_transaction)
 
-    def get_archived_subscriptions(self, user_id: int) -> List[Dict]:
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT * FROM subscriptions 
-                WHERE user_id = ? AND status = 'closed'
-                ORDER BY end_date DESC
-            ''', (user_id,))
-            columns = [description[0] for description in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    def get_archived_subscriptions(self, user_id: int) -> List[Subscription]:
+        with self.get_session() as session:
+            return session.query(Subscription).filter(
+                Subscription.user_id == user_id,
+                Subscription.status == 'closed'
+            ).order_by(Subscription.end_date.desc()).all()
 
     def update_subscription_balance(self, subscription_id: int, amount: float):
-        with self.get_connection() as conn:
-            conn.execute('''
-                UPDATE subscriptions 
-                SET current_balance = current_balance - ?
-                WHERE id = ? AND current_balance >= ?
-            ''', (amount, subscription_id, amount))
-            return conn.total_changes > 0
+        with self.get_session() as session:
+            subscription = session.query(Subscription).filter(Subscription.id == subscription_id).first()
+            if subscription and subscription.current_balance >= amount:
+                subscription.current_balance -= amount
+                return True
+            return False
 
     # Методы для работы с тренировками
     def get_price(self, duration: int, participants: int) -> Optional[float]:
-        with self.get_connection() as conn:
-            result = conn.execute('''
-                SELECT price FROM price_list 
-                WHERE duration_minutes = ? AND participants_count = ? AND is_active = TRUE
-            ''', (duration, participants)).fetchone()
-            return result[0] if result else None
+        with self.get_session() as session:
+            price = session.query(PriceList.price).filter(
+                PriceList.duration_minutes == duration,
+                PriceList.participants_count == participants,
+                PriceList.is_active == True
+            ).first()
+            return price[0] if price else None
 
     @log_database_operation
     def add_training_session(self, user_id: int, subscription_id: int, duration: int,
@@ -250,165 +131,152 @@ class Database:
             f"Adding training session: user={user_id}, duration={duration}, "
             f"participants={participants}, court={court_type}, coach={coach}"
         )
-        with self.get_connection() as conn:
-            # Получаем цену
+        with self.get_session() as session:
             price = self.get_price(duration, participants)
             if not price:
                 raise ValueError("Цена не найдена для указанных параметров")
 
-            # Проверяем баланс
-            subscription = conn.execute(
-                'SELECT current_balance FROM subscriptions WHERE id = ?',
-                (subscription_id,)
-            ).fetchone()
+            subscription = session.query(Subscription).filter(Subscription.id == subscription_id).first()
 
-            if not subscription or subscription[0] < price:
+            if not subscription or subscription.current_balance < price:
                 raise ValueError("Недостаточно средств на абонементе")
 
-            # Создаем тренировку
             now = datetime.now()
-            cursor = conn.execute('''
-                INSERT INTO training_sessions (session_date, session_time, duration_minutes, court_type, coach_name)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (now.date(), now.strftime('%H:%M:%S'), duration, court_type, coach))
-            training_id = cursor.lastrowid
+            new_training_session = TrainingSession(
+                session_date=now.date(),
+                session_time=now.time(),
+                duration_minutes=duration,
+                court_type=court_type,
+                coach_name=coach
+            )
+            session.add(new_training_session)
+            session.flush()
+            training_id = new_training_session.id
 
-            # Добавляем участника
-            conn.execute('''
-                INSERT INTO training_participants 
-                (training_session_id, user_id, subscription_id, amount_paid, participants_count)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (training_id, user_id, subscription_id, price, participants))
+            new_participant = TrainingParticipant(
+                training_session_id=training_id,
+                user_id=user_id,
+                subscription_id=subscription_id,
+                amount_paid=price,
+                participants_count=participants
+            )
+            session.add(new_participant)
 
-            # Обновляем баланс
-            conn.execute('''
-                UPDATE subscriptions SET current_balance = current_balance - ? 
-                WHERE id = ?
-            ''', (price, subscription_id))
+            subscription.current_balance -= price
 
-            # Добавляем транзакцию
-            conn.execute('''
-                INSERT INTO transactions 
-                (user_id, subscription_id, training_session_id, transaction_type, amount, description)
-                VALUES (?, ?, ?, 'expense', ?, ?)
-            ''', (user_id, subscription_id, training_id, price,
-                  f"Тренировка: {duration}мин, {participants} чел."))
-
-            conn.commit()
+            new_transaction = Transaction(
+                user_id=user_id,
+                subscription_id=subscription_id,
+                training_session_id=training_id,
+                transaction_type='expense',
+                amount=price,
+                description=f"Тренировка: {duration}мин, {participants} чел."
+            )
+            session.add(new_transaction)
             self.logger.info(f"Training session added successfully: ID {training_id}")
             return training_id
 
     # Методы для статистики
     def get_spent_amount(self, user_id: int, period: str = 'month') -> float:
-        with self.get_connection() as conn:
+        with self.get_session() as session:
             date_filter = self._get_date_filter(period)
-            result = conn.execute('''
-                SELECT COALESCE(SUM(amount), 0) FROM transactions 
-                WHERE user_id = ? AND transaction_type = 'expense' 
-                AND created_at >= ?
-            ''', (user_id, date_filter)).fetchone()
-            return result[0] if result else 0
+            return session.query(func.sum(Transaction.amount)).filter(
+                Transaction.user_id == user_id,
+                Transaction.transaction_type == 'expense',
+                Transaction.created_at >= date_filter
+            ).scalar() or 0
 
     def get_training_count(self, user_id: int, period: str = 'month', participants: int = None) -> int:
-        with self.get_connection() as conn:
+        with self.get_session() as session:
             date_filter = self._get_date_filter(period)
-            query = '''
-                SELECT COUNT(*) FROM training_participants tp
-                JOIN training_sessions ts ON tp.training_session_id = ts.id
-                WHERE tp.user_id = ? AND ts.session_date >= ?
-            '''
-            params = [user_id, date_filter]
-
+            query = session.query(func.count(TrainingParticipant.id)).join(TrainingSession).filter(
+                TrainingParticipant.user_id == user_id,
+                TrainingSession.session_date >= date_filter
+            )
             if participants:
-                query += ' AND tp.participants_count = ?'
-                params.append(participants)
+                query = query.filter(TrainingParticipant.participants_count == participants)
 
-            result = conn.execute(query, params).fetchone()
-            return result[0] if result else 0
+            return query.scalar() or 0
 
     def _get_date_filter(self, period: str) -> str:
         """Возвращает дату для фильтрации по периоду"""
         today = datetime.now().date()
         if period == 'week':
-            return (today - timedelta(days=7)).isoformat()
+            return (today - timedelta(days=7))
         elif period == 'month':
-            return today.replace(day=1).isoformat()
+            return today.replace(day=1)
         elif period == 'year':
-            return today.replace(month=1, day=1).isoformat()
+            return today.replace(month=1, day=1)
         else:  # all time
-            return '2000-01-01'
+            return datetime(2000, 1, 1).date()
 
     def get_user_trainings(self, user_id: int, limit: int = 10) -> List[Dict]:
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT ts.session_date, ts.duration_minutes, tp.participants_count, 
-                       tp.amount_paid, ts.court_type, ts.coach_name
-                FROM training_participants tp
-                JOIN training_sessions ts ON tp.training_session_id = ts.id
-                WHERE tp.user_id = ?
-                ORDER BY ts.session_date DESC, ts.session_time DESC
-                LIMIT ?
-            ''', (user_id, limit))
-
-            columns = [description[0] for description in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        with self.get_session() as session:
+            trainings = session.query(
+                TrainingSession.session_date,
+                TrainingSession.duration_minutes,
+                TrainingParticipant.participants_count,
+                TrainingParticipant.amount_paid,
+                TrainingSession.court_type,
+                TrainingSession.coach_name
+            ).join(TrainingParticipant).filter(
+                TrainingParticipant.user_id == user_id
+            ).order_by(
+                TrainingSession.session_date.desc(),
+                TrainingSession.session_time.desc()
+            ).limit(limit).all()
+            return [training._asdict() for training in trainings]
 
     def get_transactions(self, user_id: int, period: str) -> List[Dict]:
-        with self.get_connection() as conn:
+        with self.get_session() as session:
             date_filter = self._get_date_filter(period)
-            cursor = conn.execute('''
-                SELECT transaction_type as type, amount, created_at as date
-                FROM transactions
-                WHERE user_id = ? AND created_at >= ?
-                ORDER BY created_at DESC
-            ''', (user_id, date_filter))
-            columns = [description[0] for description in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            transactions = session.query(
+                Transaction.transaction_type.label('type'),
+                Transaction.amount,
+                Transaction.created_at.label('date')
+            ).filter(
+                Transaction.user_id == user_id,
+                Transaction.created_at >= date_filter
+            ).order_by(Transaction.created_at.desc()).all()
+            return [transaction._asdict() for transaction in transactions]
 
     def add_old_subscription(self, user_id: int, subscription_number: str, initial_amount: float,
                              visits: int, start_date: str, end_date: Optional[str] = None):
-        with self.get_connection() as conn:
+        with self.get_session() as session:
             status = 'closed' if end_date else 'active'
-            cursor = conn.execute('''
-                INSERT INTO subscriptions (user_id, subscription_number, initial_amount, current_balance, start_date, end_date, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, subscription_number, initial_amount, initial_amount, start_date, end_date, status))
-            return cursor.lastrowid
+            new_subscription = Subscription(
+                user_id=user_id,
+                subscription_number=subscription_number,
+                initial_amount=initial_amount,
+                current_balance=initial_amount,
+                start_date=datetime.strptime(start_date, '%Y-%m-%d').date(),
+                end_date=datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None,
+                status=status
+            )
+            session.add(new_subscription)
+            session.flush()
+            return new_subscription.id
 
-    def get_subscription_by_id(self, subscription_id: int) -> Optional[Dict]:
-        with self.get_connection() as conn:
-            cursor = conn.execute('SELECT * FROM subscriptions WHERE id = ?', (subscription_id,))
-            columns = [description[0] for description in cursor.description]
-            row = cursor.fetchone()
-            return dict(zip(columns, row)) if row else None
+    def get_subscription_by_id(self, subscription_id: int) -> Optional[Subscription]:
+        with self.get_session() as session:
+            return session.query(Subscription).filter(Subscription.id == subscription_id).first()
 
     def update_subscription(self, subscription_id: int, field: str, value):
-        with self.get_connection() as conn:
-            if field == 'initial_amount':
-                # При изменении initial_amount пересчитываем current_balance
-                expenses_result = conn.execute('''
-                    SELECT COALESCE(SUM(amount), 0) FROM transactions
-                    WHERE subscription_id = ? AND transaction_type = 'expense'
-                ''', (subscription_id,)).fetchone()
-                expenses = expenses_result[0] if expenses_result else 0
-                new_balance = float(value) - expenses
-                conn.execute('''
-                    UPDATE subscriptions
-                    SET initial_amount = ?, current_balance = ?
-                    WHERE id = ?
-                ''', (value, new_balance, subscription_id))
-            else:
-                # Для других полей просто обновляем значение
-                query = f"UPDATE subscriptions SET {field} = ? WHERE id = ?"
-                conn.execute(query, (value, subscription_id))
+        with self.get_session() as session:
+            subscription = session.query(Subscription).filter(Subscription.id == subscription_id).first()
+            if subscription:
+                if field == 'initial_amount':
+                    expenses = session.query(func.sum(Transaction.amount)).filter(
+                        Transaction.subscription_id == subscription_id,
+                        Transaction.transaction_type == 'expense'
+                    ).scalar() or 0
+                    new_balance = float(value) - expenses
+                    subscription.initial_amount = value
+                    subscription.current_balance = new_balance
+                else:
+                    setattr(subscription, field, value)
 
-    def get_all_user_subscriptions(self, user_id: int) -> List[Dict]:
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT * FROM subscriptions
-                WHERE user_id = ?
-                ORDER BY start_date DESC
-            ''', (user_id,))
-            columns = [description[0] for description in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
-    
+    def get_all_user_subscriptions(self, user_id: int) -> List[Subscription]:
+        with self.get_session() as session:
+            return session.query(Subscription).filter(Subscription.user_id == user_id).order_by(
+                Subscription.start_date.desc()).all()

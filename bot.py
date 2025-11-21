@@ -21,12 +21,8 @@ async def main():
     os.makedirs(os.path.dirname(config.DB_PATH) if os.path.dirname(config.DB_PATH) else '.', exist_ok=True)
 
     # Инициализация базы данных
-    try:
-        db = Database(config.DB_PATH)
-        logger.info("Database initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        return
+    db = Database(config.DB_PATH)
+    logger.info("Database connection configured.")
 
     # FSM storage
     storage = MemoryStorage()
