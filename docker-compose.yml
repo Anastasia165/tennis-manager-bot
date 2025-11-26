@@ -3,7 +3,9 @@ services:
     build: .
     volumes:
       - .app_data:/data
+      - .log_data:/logs
     restart: always
 
 volumes:
   app_data:
+  log_data:
