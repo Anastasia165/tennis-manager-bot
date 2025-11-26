@@ -1,5 +1,5 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, func, desc, asc
+from sqlalchemy.orm import Session, sessionmaker
 from contextlib import contextmanager
 import logging
 from datetime import datetime, timedelta
@@ -17,7 +17,7 @@ class Database:
         self.logger = logging.getLogger('bot.database')
         self.logger.info(f"Initializing database: {db_path}")
         self.engine = create_engine(f'sqlite:///{db_path}')
-        self.Session = sessionmaker(bind=self.engine)
+        self.Session = sessionmaker(bind=self.engine, expire_on_commit=False)
 
     @contextmanager
     def get_session(self):

@@ -480,14 +480,17 @@ class Handlers:
             await message.answer("Ваш профиль не найден. Пожалуйста, зарегистрируйтесь, используя команду /start.")
             return
 
-        subscription = self.db.get_active_subscription(user.id)
-        total_trainings = self.db.get_training_count(user.id, 'all')
+        # Сохраняем ID ДО использования user
+        user_id = user.id
+
+        subscription = self.db.get_active_subscription(user_id)
+        total_trainings = self.db.get_training_count(user_id, 'all')
 
         text = (
             f"👤 <b>Ваш профиль</b>\n\n"
-            f"Имя: {user['first_name']} {user['last_name'] or ''}\n"
-            f"Телефон: {user['phone'] or 'не указан'}\n"
-            f"Дата регистрации: {format_date(user['registration_date'])}\n\n"
+            f"Имя: {user.first_name} {user.last_name or ''}\n"  # ✅ user.first_name вместо user['first_name']
+            f"Телефон: {user.phone or 'не указан'}\n"  # ✅ user.phone вместо user['phone']
+            # f"Дата регистрации: {format_date(user.registration_date)}\n\n"  # ✅ user.registration_date
             f"Всего тренировок: <b>{total_trainings}</b>\n"
         )
 

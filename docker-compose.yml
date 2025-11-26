@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    volumes:
+      - .app_data:/data
+    restart: always
+
+volumes:
+  app_data:
