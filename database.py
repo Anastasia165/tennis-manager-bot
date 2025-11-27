@@ -17,6 +17,7 @@ class Database:
         self.logger = logging.getLogger('bot.database')
         self.logger.info(f"Initializing database: {db_path}")
         self.engine = create_engine(f'sqlite:///{db_path}')
+        Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine, expire_on_commit=False)
 
     @contextmanager

@@ -3,10 +3,6 @@ services:
     build: .
     user: "1000:1000"
     volumes:
-      - ./.app_data:/data
-      - ./.log_data:/logs
+      - ./app_data:/data
+      - ./log_data:/logs
     restart: always
-
-volumes:
-  app_data:
-  log_data:
